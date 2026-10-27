@@ -1,0 +1,43 @@
+import React, { useMemo } from 'react';
+import { FlatList, KeyboardAvoidingView, Modal, Platform, RefreshControl, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
+import { spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import { useFeedbackAdmin, DeletionRequest } from '@/hooks/useFeedbackAdmin';
+import { useAlert } from '@/template';
+import { CriteriaRatings, FeedbackAdminRow, feedbackStatusLabel, feedbackTopicLabel, summarizeCriteria } from '@/services/feedbackService';
+import { FeedbackCriteriaScores } from '@/components/feature/FeedbackCriteria';
+import { createFeedbackStyles } from '@/constants/feedbackStyles';
+import { FeedbackButton, FeedbackChips, FeedbackError, FeedbackInput } from '@/components/feature/FeedbackControls';
+import { FeedbackHighlights } from '@/components/feature/BusinessFeedbackSummary';
+import { ExperienceApprovalControl } from '@/components/admin/ExperienceApprovalControl';
+
+const tabs = [{ id: 'review', label: 'Yorumlar ve cevaplar' }, { id: 'complaint', label: 'Şikâyetler' }, { id: 'suggestion', label: 'Öneriler ve cevaplar' }, { id: 'summary', label: 'İşletme özeti' }, { id: 'deletion', label: 'Hesap silme' }];
+export default function AdminFeedbackScreen() {
+  const { colors } = useTheme(); const styles = useMemo(() => createFeedbackStyles(colors), [colors]);
+  const { showAlert } = useAlert();
+  const params = useLocalSearchParams<{ kind?: string }>();
+  const initialKind = params.kind === 'complaint' ? 'complaint' : 'review';
+  const m = useFeedbackAdmin(initialKind);
+  const renderItem = ({ item }: { item: FeedbackAdminRow | DeletionRequest }) => {
+    if ('user_id' in item && m.kind === 'deletion') {
+      const job = item as DeletionRequest;
+      return <View style={styles.card}><Text style={styles.heading}>{feedbackStatusLabel(job.status)}</Text><Text style={styles.subtle}>İstek: {job.user_id.slice(0, 8)} · {new Date(job.created_at).toLocaleString('tr-TR')}</Text><Text style={styles.subtle}>İşlem kayıtları korunur. Yalnızca sahibi tarafından şifreyle doğrulanmış silme isteği devam ettirilir.</Text>{job.status !== 'completed' ? <FeedbackButton secondary label="Silme isteğini devam ettir" disabled={m.busy} onPress={() => showAlert('Silme isteğini devam ettir', 'Doğrulanmış ve yarım kalmış silme işlemi tamamlanacak. İşlem geri alınamaz.', [{ text: 'Vazgeç', style: 'cancel' }, { text: 'Devam Ettir', style: 'destructive', onPress: () => { void m.resumeDeletion(job.user_id); } }])} /> : null}</View>;
+    }
+    const row = item as FeedbackAdminRow & { criteria_ratings?: CriteriaRatings };
+    const criteria = summarizeCriteria(row.criteria_ratings ?? {});
+    const overallRating = criteria.selected === 6 ? criteria.average : row.rating;
+    if (m.kind === 'summary') return <View style={styles.card}><Text style={styles.heading}>{row.business_name}</Text>{row.summary ? <><Text style={styles.big}>{Number(row.summary.ratings?.rating ?? 0).toFixed(1)} / 5</Text><Text style={styles.subtle}>{row.summary.ratings?.count ?? 0} yayımlanmış değerlendirme</Text><FeedbackHighlights data={row.summary} /></> : null}</View>;
+    return <View style={styles.card}><Text style={styles.heading}>{row.business_name ?? (row.target_type ? `${row.target_type} bildirimi` : 'İçerik')}</Text><Text style={styles.subtle}>{feedbackStatusLabel(row.status)}{row.created_at ? ` · ${new Date(row.created_at).toLocaleString('tr-TR')}` : ''}</Text><Text style={styles.heading}>{overallRating ? `${Number(overallRating).toFixed(1)} / 5 · ` : ''}{feedbackTopicLabel(row.feedback_category ?? row.topic ?? row.reason)}</Text><FeedbackCriteriaScores scores={row.criteria_ratings} />{row.comment || row.description ? <Text style={styles.text}>{row.comment || row.description}</Text> : null}{typeof row.supports === 'number' ? <Text style={styles.subtle}>{row.supports} farklı kullanıcı desteği</Text> : null}{row.moderation_reason || row.resolution_note ? <Text style={styles.subtle}>Gerekçe: {row.moderation_reason || row.resolution_note}</Text> : null}
+      {m.kind === 'complaint' ? <><Text style={styles.subtle}>Bildirim, iddianın doğrulandığı anlamına gelmez.</Text>{row.evidence_path ? <FeedbackButton secondary label="Özel kanıtı görüntüle" icon="image-search-outline" onPress={() => { void m.openEvidence(row.id); }} /> : null}<View style={styles.row}>{[{ id: 'reviewing', label: 'İnceleniyor' }, { id: 'resolved', label: 'Sonuçlandı' }, { id: 'dismissed', label: 'İşleme alma' }].map(status => <FeedbackButton key={status.id} secondary label={status.label} disabled={m.busy} onPress={() => m.select(row.id, 'complaint', status.id)} />)}</View></> : <View style={styles.row}><FeedbackButton secondary label="Yayımla" disabled={m.busy} onPress={() => m.select(row.id, m.kind, 'published')} /><FeedbackButton secondary danger label="Gerekçeli gizle" disabled={m.busy} onPress={() => m.select(row.id, m.kind, 'hidden')} /></View>}
+      {row.reply ? <View style={styles.reply}><Text style={styles.heading}>İşletme cevabı · {feedbackStatusLabel(row.reply_status)}</Text><Text style={styles.text}>{row.reply}</Text>{row.reply_reason ? <Text style={styles.subtle}>{row.reply_reason}</Text> : null}<View style={styles.row}><FeedbackButton secondary label="Cevabı yayımla" onPress={() => m.select(row.id, `${m.kind}_reply`, 'published')} disabled={m.busy} /><FeedbackButton secondary danger label="Cevabı gizle" onPress={() => m.select(row.id, `${m.kind}_reply`, 'hidden')} disabled={m.busy} /></View></View> : null}
+    </View>;
+  };
+  const data: (FeedbackAdminRow | DeletionRequest)[] = m.kind === 'deletion' ? m.deletions : m.items;
+  return <SafeAreaView style={styles.screen} edges={['bottom']}><KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><FlatList<FeedbackAdminRow | DeletionRequest> data={data} keyExtractor={item => 'id' in item ? item.id : item.user_id} renderItem={renderItem} style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={m.loading} onRefresh={m.refresh} tintColor={colors.primaryDark} />} ListHeaderComponent={<View style={styles.section}><ExperienceApprovalControl /><View style={styles.tint}><Text style={styles.title}>Müşteri deneyimi denetimi</Text><Text style={styles.text}>Kişisel şikâyet ayrıntıları yalnızca bu yetkili alanda gösterilir. Her moderasyon işlemi gerekçesiyle kaydedilir.</Text></View><FeedbackChips label="Denetim alanı" items={tabs} selected={m.kind} onSelect={value => m.setKind(value as typeof m.kind)} disabled={m.busy} /><FeedbackError message={m.error} /></View>} ListEmptyComponent={!m.loading ? <Text style={styles.text}>Bu alanda kayıt bulunmuyor.</Text> : null} />
+    <Modal visible={!!m.selected} transparent animationType="fade" onRequestClose={() => { if (!m.busy) m.setSelected(null); }}><SafeAreaView style={[styles.screen, { backgroundColor: colors.overlay }]} edges={['top', 'bottom']}><KeyboardAvoidingView style={[styles.screen, { justifyContent: 'center', padding: spacing.lg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><View style={styles.card}><Text style={styles.heading}>Gerekçeli yönetici işlemi</Text><Text style={styles.text}>Yeni durum: {feedbackStatusLabel(m.selected?.status)}</Text><FeedbackInput label="İşlem gerekçesi (en az 5 karakter)" value={m.reason} onChange={m.setReason} maxLength={1000} disabled={m.busy} /><FeedbackError message={m.error} /><FeedbackButton label="Gerekçeyi kaydet ve uygula" busy={m.busy} onPress={() => { void m.submit(); }} disabled={m.reason.trim().length < 5} /><FeedbackButton secondary label="Vazgeç" disabled={m.busy} onPress={() => m.setSelected(null)} /></View></KeyboardAvoidingView></SafeAreaView></Modal>
+    <Modal visible={!!m.evidenceUrl} animationType="fade" onRequestClose={() => m.setEvidenceUrl(null)}><SafeAreaView style={styles.screen} edges={['top', 'bottom']}><View style={[styles.content, { flex: 1 }]}><Text style={styles.heading}>Özel şikâyet kanıtı</Text><Text style={styles.subtle}>Yetkili görüntüleme bağlantısı 60 saniyede sona erer.</Text>{m.evidenceUrl ? <Image source={{ uri: m.evidenceUrl }} style={{ flex: 1, width: '100%' }} contentFit="contain" transition={200} cachePolicy="none" /> : null}<FeedbackButton secondary label="Kanıtı kapat" onPress={() => m.setEvidenceUrl(null)} /></View></SafeAreaView></Modal>
+  </KeyboardAvoidingView></SafeAreaView>;
+}

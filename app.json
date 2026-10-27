@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "Caddeden",
+    "slug": "onspace-app",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/images/logo.png",
+    "scheme": "onspaceapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logo.png",
+        "backgroundColor": "#F7F3EB"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/logo.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F7F3EB"
+        }
+      ],
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Konumunu, işletmeni haritada göstermek ve yakındaki işletmeleri sıralamak için kullanırız.",
+          "locationWhenInUsePermission": "Konumunu uygulama açıkken işletmeleri yakınlığa göre sıralamak, 50 metre içindeki işletmeleri önermek ve seçtiğin işletmede olduğunu onayınla doğrulamak için kullanırız. Mekân katılımında konumun kaydedilmez."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Profil fotoğrafını, işletme görsellerini ve paylaşımlarını seçebilmen için fotoğraflarına erişim izni gerekir."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
