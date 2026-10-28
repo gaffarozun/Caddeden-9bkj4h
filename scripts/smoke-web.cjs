@@ -10,8 +10,12 @@ const clean = (s) => String(s).replace(/[\r\n]+/g, ' ').replace(/eyJ[\w-]{20,}\.
   p.on('pageerror', (e) => errs.push('PAGEERROR ' + clean(e.message)));
   p.on('requestfailed', (r) => fails.push(clean(r.url()) + ' ' + clean(r.failure()?.errorText)));
   p.on('response', (r) => { if (r.status() >= 400) fails.push(r.status() + ' ' + clean(r.url())); });
-  const resp = await p.goto(url, { waitUntil: 'networkidle', timeout: 60000 }).catch((e) => { errs.push('GOTO ' + clean(e.message)); return null; });
-  await p.waitForTimeout(3000);
+  const resp = await p.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) => { errs.push('GOTO ' + clean(e.message)); return null; });
+  await p.waitForTimeout(1300);
+  const v = await p.evaluate(() => { const e = document.querySelector('video'); return e ? { var: true, t: +e.currentTime.toFixed(2), paused: e.paused, ready: e.readyState, w: e.videoWidth, h: e.videoHeight, err: e.error ? e.error.code : null } : { var: false }; }).catch(() => ({ var: 'hata' }));
+  console.log(`::notice title=smoke intro video::${JSON.stringify(v)}`);
+  await p.screenshot({ path: 'smoke-intro.png' });
+  await p.waitForTimeout(5000);
   console.log(`::notice title=smoke http::${resp ? resp.status() : 'no response'} ${url}`);
   const text = clean(await p.evaluate(() => document.body.innerText).catch(() => ''));
   console.log(`::notice title=smoke gorunen metin::${text || '(BOŞ SAYFA)'}`);
