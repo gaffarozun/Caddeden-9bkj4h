@@ -12,6 +12,7 @@ export function runAuthErrorChecks() {
   assert(describeAuthError({ message: 'Error sending confirmation email', status: 500 }, 't').includes('SMTP'), 'SMTP failure is explained.');
   assert(describeAuthError({ message: 'Invalid API key', status: 401 }, 't').includes('anon'), 'Bad anon key is explained.');
   assert(!describeAuthError({ message: 'Error sending magic link email' }, 't').includes('internet'), 'Email failure is never reported as an internet problem.');
+  assert(describeAuthError({ message: 'Email address not authorized', code: 'email_address_not_authorized', status: 400 }, 't').includes('SMTP'), 'Built-in SMTP restriction is explained.');
   assert(messageForDiagnosis('host_unreachable').includes('EXPO_PUBLIC_SUPABASE_URL'), 'Unreachable host points at the URL setting.');
   assert(messageForDiagnosis('offline').includes('internete'), 'Offline is reported only when the device is offline.');
   return 'passed: auth errors are classified (credentials, rate limit, SMTP, API key, network)';

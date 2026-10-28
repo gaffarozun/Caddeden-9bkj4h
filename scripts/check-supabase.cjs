@@ -18,3 +18,22 @@ const note = (lvl, t, m) => console.log(`::${lvl} title=supabase ${t}::${m}`);
     note('warning', 'ulasilamiyor', `host ${host} çözülemiyor/ulaşılamıyor (${code}). URL hatalı ya da proje duraklatılmış/silinmiş olabilir`);
   }
 })();
+
+// Baseline migration'daki tabloların hedef projede var olup olmadığını salt-okunur GET ile sınar.
+// 200/401/403 = tablo var (izin durumu önemsiz), 404 = yok. Yalnızca tablo adları yazılır.
+(async () => {
+  if (!url || !key) return;
+  const fs = require('fs');
+  let sql = ''; try { sql = fs.readFileSync('supabase/migrations/20261001_baseline_inferred_schema.sql', 'utf8'); } catch { return; }
+  const tables = [...new Set([...sql.matchAll(/create table (?:if not exists )?public\.(\w+)/gi)].map((m) => m[1]))];
+  const missing = [];
+  for (const t of tables) {
+    try { const r = await fetch(`${url}/rest/v1/${t}?select=*&limit=0`, { headers: { apikey: key } }); if (r.status === 404) missing.push(t); } catch { return; }
+  }
+  if (missing.length) note('warning', 'eksik tablolar', `${missing.length}/${tables.length}: ${missing.join(', ')}`);
+  else note('notice', 'tablolar', `baseline'daki ${tables.length} tablonun hepsi mevcut`);
+  for (const f of ['public_paid_campaigns', 'university_public_messages', 'experiences_enabled']) {
+    // Yalnızca varlık sınaması: GET bir RPC'yi çalıştırmaz (PostgREST yalnızca POST/STABLE GET ile çağırır); 404 = yok.
+    try { const r = await fetch(`${url}/rest/v1/rpc/${f}`, { method: 'HEAD', headers: { apikey: key } }); note(r.status === 404 ? 'warning' : 'notice', 'rpc ' + f, r.status === 404 ? 'YOK' : 'var'); } catch {}
+  }
+})();

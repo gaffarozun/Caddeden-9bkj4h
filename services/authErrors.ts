@@ -15,6 +15,7 @@ export function describeAuthError(error: unknown, context: string): string {
   if (code === 'otp_expired' || msg.includes('expired')) return 'Doğrulama kodunun süresi dolmuş. Yeni kod isteyin.';
   if (code === 'otp_disabled' || msg.includes('signups not allowed') || code === 'signup_disabled') return 'Yeni kayıtlar şu anda kapalı. Lütfen daha sonra deneyin.';
   if (msg.includes('token has expired or is invalid') || msg.includes('invalid') && msg.includes('token')) return 'Doğrulama kodu hatalı ya da süresi dolmuş.';
+  if (code === 'email_address_not_authorized' || msg.includes('email address not authorized')) return 'Bu e-posta adresine gönderim yapılamıyor: Supabase yerleşik e-posta servisi yalnızca proje ekibindeki adreslere gönderir. Yönetici özel SMTP tanımlamalı.';
   if (code === 'over_email_send_rate_limit' || msg.includes('email rate limit') || msg.includes('rate limit') || e.status === 429) return 'Kısa sürede çok fazla e-posta istendi. Birkaç dakika bekleyip tekrar deneyin.';
   if (code === 'weak_password' || msg.includes('password should')) return 'Şifre çok zayıf. Daha uzun ve tahmin edilmesi zor bir şifre seçin.';
   if (code === 'user_already_exists' || msg.includes('already registered')) return 'Bu e-posta ile zaten bir hesap var. Giriş yapmayı deneyin.';
