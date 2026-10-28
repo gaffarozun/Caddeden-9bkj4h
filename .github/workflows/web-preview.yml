@@ -18,7 +18,7 @@ jobs:
       # pnpm-lock.yaml package.json ile uyumsuz; bu yüzden frozen değil.
       - run: pnpm install --no-frozen-lockfile
       - run: npx tsc --noEmit
-        continue-on-error: true
+        continue-on-error: false
       - run: npx expo export --platform web
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
