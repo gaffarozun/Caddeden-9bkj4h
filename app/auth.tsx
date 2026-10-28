@@ -143,7 +143,7 @@ export default function AuthScreen() {
         {mode === 'register' && otpSent ? (
           <View style={styles.otpBox}>
             <Text style={styles.otpInfo}>{email} adresine gönderilen kodu gir.</Text>
-            <Field label="Doğrulama Kodu" icon="shield-check-outline" value={otp} onChangeText={setOtp} placeholder="Kod" keyboardType="phone-pad" maxLength={10} />
+            <Field label="Doğrulama Kodu" icon="shield-check-outline" value={otp} onChangeText={setOtp} placeholder="Kod" keyboardType="phone-pad" />
             <Button
               label={operationLoading ? 'Doğrulanıyor...' : 'Doğrula ve Kaydı Tamamla'}
               icon="check-circle-outline"
