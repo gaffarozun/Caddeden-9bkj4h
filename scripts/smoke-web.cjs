@@ -12,15 +12,11 @@ const clean = (s) => String(s).replace(/[\r\n]+/g, ' ').replace(/eyJ[\w-]{20,}\.
   p.on('response', (r) => { if (r.status() >= 400) fails.push(r.status() + ' ' + clean(r.url())); });
   const resp = await p.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) => { errs.push('GOTO ' + clean(e.message)); return null; });
   await p.waitForTimeout(1300);
-  const v = await p.evaluate(() => { const e = document.querySelector('video'); return e ? { var: true, t: +e.currentTime.toFixed(2), paused: e.paused, ready: e.readyState, w: e.videoWidth, h: e.videoHeight, err: e.error ? e.error.code : null } : { var: false }; }).catch(() => ({ var: 'hata' }));
-  console.log(`::notice title=smoke intro video::${JSON.stringify(v)}`);
-  const d = await p.evaluate(async () => {
-    const e = document.querySelector('video'); const src = e && (e.currentSrc || e.src);
-    const out = { src: src ? src.replace(location.origin, '') : null, h264: document.createElement('video').canPlayType('video/mp4; codecs="avc1.42E01E"') || 'hayir' };
-    if (src) { try { const r = await fetch(src); out.status = r.status; out.type = r.headers.get('content-type'); out.bytes = (await r.arrayBuffer()).byteLength; } catch (x) { out.fetchErr = String(x).slice(0, 80); } }
-    return out;
-  }).catch(() => ({}));
-  console.log(`::notice title=smoke intro dosya::${JSON.stringify(d)}`);
+  const snap = () => p.evaluate(() => [...document.querySelectorAll('svg circle')].map((c) => c.getAttribute('cx') + ',' + c.getAttribute('cy') + ',' + c.getAttribute('r')));
+  const s1 = await snap(); await p.waitForTimeout(500); const s2 = await snap();
+  const moved = s1.filter((v, k) => v !== s2[k]).length;
+  const svgs = await p.evaluate(() => document.querySelectorAll('svg').length);
+  console.log(`::notice title=smoke intro animasyon::svg=${svgs} daire=${s1.length} hareket_eden=${moved}`);
   await p.screenshot({ path: 'smoke-intro.png' });
   await p.waitForTimeout(5000);
   console.log(`::notice title=smoke http::${resp ? resp.status() : 'no response'} ${url}`);

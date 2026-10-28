@@ -1,7 +1,7 @@
 # Caddeden açılışı
 
 - Karanlık gökyüzü altında, sokak lambaları ve kafe ışıklarıyla aydınlanan yokuş aşağı bir cadde; ortada palmiyeli refüj, bir tarafta aşağı gidiş ve diğer tarafta dönüş yolu.
-- Yerel `assets/images/caddeden-intro-street.webp` illüstrasyonu `expo-image` ile gösterilir. Sabit hızda ilerleme hissi veren kamera yaklaşması, yükselerek beliren Caddeden adı ve kısa kapanış geçişi vardır. Araçlar ve palmiyeler illüstrasyonun parçalarıdır; bağımsız hareket etmezler.
+- Gece caddesi, görsel dosyası olmadan `components/feature/NightStreetScene.tsx` içinde SVG ile çizilir (web, iOS ve Android'de aynı); perspektifli yol, palmiyeli refüj, tenteli kafeler, sokak lambaları ve akan araç ışıkları (gelen beyaz, giden kırmızı). Sabit hızda ilerleme hissi veren kamera yaklaşması, yükselerek beliren Caddeden adı ve kısa kapanış geçişi vardır. Araçlar ve palmiyeler illüstrasyonun parçalarıdır; bağımsız hareket etmezler.
 - Toplam süre 4.200 ms; kamera hareketi 3.700 ms, çıkış geçişi 280 ms. Fotoğraf yüklenmesi, tema tercihi veya ağ yanıtı bu süreyi uzatmaz.
 - Animasyon kök navigatörün üzerinde çalışır. Oturum, roller, işletme onayı ve yönlendirmeler altta yüklenmeye devam eder; rotalar değiştirilmez.
 - Sekme değişimi, giriş/çıkış ve uygulamayı arka plandan öne getirme tekrar oynatmaz. Yeni kök uygulama oturumunda yeniden gösterilir.
@@ -20,6 +20,3 @@
 
 Gerçek cihaz kontrolleri bu geliştirme turunda çalıştırılmadı.
 
-## Web açılışı
-Web'de açılış, `assets/video/caddeden-intro.mp4` (1,7 sn, sessiz, gece caddesi + "Caddeden / Bir cadde, birçok keşif.") videosuyla oynar (`components/feature/CaddedenIntro.web.tsx`, `expo-video`). Toplam süre 2.600 ms; video biter bitmez son kare tutulur, sonra uygulamaya geçilir. Video yüklenemezse `caddeden-intro-web-poster.jpg` ilk karesi görünür. Video 296×572 çözünürlüktedir; geniş ekranda büyütülmemesi için `contain` ile ortalanır. Daha net bir sonuç için kaynak videonun yüksek çözünürlüklü hali gerekir.
-Not: yerel (iOS/Android) açılış hâlâ `caddeden-intro-street.webp` görselini kullanır; bu görsel gündüz sokağıdır ve videodaki gece caddesiyle aynı değildir.

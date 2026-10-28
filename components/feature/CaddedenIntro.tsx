@@ -1,12 +1,12 @@
 import React, { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fontSize, fontWeight, spacing } from '@/constants/theme';
 import { caddedenIntroColors as colors, caddedenIntroLayout as layout } from '@/constants/caddedenIntroTheme';
 import { useCaddedenIntro } from '@/hooks/useCaddedenIntro';
+import { NightStreetScene } from './NightStreetScene';
 
 interface CaddedenIntroProps {
   intro: ReturnType<typeof useCaddedenIntro>;
@@ -23,13 +23,7 @@ export const CaddedenIntro = memo(function CaddedenIntro({ intro }: CaddedenIntr
       accessibilityRole="text"
     >
       <Animated.View style={[StyleSheet.absoluteFillObject, intro.streetStyle]} pointerEvents="none">
-        <Image
-          source={require('@/assets/images/caddeden-intro-street.webp')}
-          style={StyleSheet.absoluteFillObject}
-          contentFit="cover"
-          transition={0}
-          accessible={false}
-        />
+        <NightStreetScene />
       </Animated.View>
       <LinearGradient
         colors={[colors.transparent, colors.softOverlay, colors.background]}

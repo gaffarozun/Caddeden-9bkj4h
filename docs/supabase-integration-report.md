@@ -43,7 +43,7 @@ Hedef Supabase projesinde **hiçbir SQL çalıştırılmadı**. Aşağıdaki 1. 
    `user_profiles` gibi tablolar, `feedback_write/read` fonksiyonları, `auth.users` tetikleyicisi ve ilk RLS/bucket
    politikaları yoktur. `20261020_feedback_criteria.sql` mevcut `feedback_write` gövdesini metin değiştirerek yamalar;
    o fonksiyon yoksa hata verir. → `supabase/export/export_live_schema.sql` ile kaynaktan çıkarılmalı.
-2. **Görsel:** eksik `caddeden-intro-night-street.webp` yerine depodaki `caddeden-intro-street.webp` kullanılıyor (bkz. `docs/RUN_AND_BUILD.md`).
+2. **Görsel:** eksik açılış görseli yerine gece caddesi `components/feature/NightStreetScene.tsx` içinde kodla çizilir.
 3. **Veri ve dosya taşıma** (kullanıcılar, işletmeler, görseller) kaynak veritabanına/storage'a erişim gerektirir; burada yapılamadı.
 4. **E-posta şablonları:** kayıt akışı `signInWithOtp` ile e-posta **kodu** bekler; Supabase varsayılan şablonları
    yalnızca bağlantı içerir. `{{ .Token }}` eklenmeli (bkz. `supabase/README.md`, adım 6).

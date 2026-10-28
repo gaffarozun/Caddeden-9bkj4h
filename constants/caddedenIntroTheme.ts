@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import { spacing, fontSize } from './theme';
 
 // A night-time street stage with warm orange/mustard lights; personal themes follow unchanged.
@@ -11,12 +10,11 @@ export const caddedenIntroColors = {
   softOverlay: '#08121FCC',
 };
 export const caddedenIntroMotion = {
-  // Web'de açılış, 1,7 sn'lik gece caddesi videosuna göre kısa tutulur.
-  totalMs: Platform.OS === 'web' ? 2600 : 4200,
+  totalMs: 4200,
   exitMs: 280,
   titleDelayMs: 250,
   titleMs: 280,
-  streetMs: Platform.OS === 'web' ? 2100 : 3700,
+  streetMs: 3700,
   streetStartScale: 1.01,
   streetEndScale: 1.18,
   streetTravel: spacing.lg,
