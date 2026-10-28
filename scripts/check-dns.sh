@@ -5,8 +5,8 @@ note() { echo "::notice title=dns $1::$2"; }
 q() { dig +short +time=4 +tries=1 "@$1" "$3" "$2" 2>&1 | tr '\n' ' ' | cut -c1-240; }
 NS=$(dig +short +time=4 NS "$D" @1.1.1.1 | tr '\n' ' ')
 note "NS($D)" "${NS:-(YOK: alan adı çözülmüyor ya da NS kaydı bulunamadı)}"
-for r in 1.1.1.1 8.8.8.8; do
-  for spec in "TXT resend._domainkey" "CNAME resend._domainkey" "CNAME resend" "TXT resend" "MX send" "TXT send" "CNAME send" "TXT _dmarc"; do
+for r in 1.1.1.1; do
+  for spec in "TXT resend._domainkey" "CNAME resend._domainkey" "CNAME resend" "CNAME rsend" "TXT rsend" "MX send" "TXT send" "CNAME send" "TXT _dmarc"; do
     t=${spec%% *}; n=${spec#* }
     v=$(q "$r" "$t" "$n.$D")
     note "$r $t $n" "${v:-(boş)}"
