@@ -8,7 +8,8 @@ import { usePostsFeed } from '@/hooks/usePostsFeed';
 import { useTabScrollToTop } from '@/hooks/useTabScrollToTop';
 import type { Post } from '@/services/types';
 import { FeedbackButton, FeedbackError } from '@/components/feature/FeedbackControls';
-import { RefreshButton } from '@/components/feature/RefreshButton';
+import { PullRefreshIndicator } from '@/components/feature/PullRefreshIndicator';
+import { useWebPullRefresh } from '@/hooks/useWebPullRefresh';
 import { useTheme } from '@/hooks/useTheme';
 import { fontSize, fontWeight, spacing, ThemeColors } from '@/constants/theme';
 
@@ -17,14 +18,16 @@ export default function PostsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { posts, main, setMain, categoryLabel, error, refreshing, refresh } = usePostsFeed();
+  const pull = useWebPullRefresh(listRef, refresh, refreshing);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScreenHeader title="Gönderiler" right={<RefreshButton onPress={refresh} refreshing={refreshing} label="Gönderileri yenile" />} />
+      <ScreenHeader title="Gönderiler" />
       <View style={styles.categories}><MainCategoryTabs compact selected={main} onSelect={setMain} /></View>
       <View style={styles.categorySummary}>
         <View style={styles.categoryText}><Text style={styles.categoryTitle}>{categoryLabel}</Text><Text style={styles.count}>{posts.length} gönderi</Text></View>
       </View>
+      <PullRefreshIndicator pull={pull} refreshing={refreshing} top={190} />
       <FlatList
         ref={listRef}
         data={posts}

@@ -13,7 +13,8 @@ import { MenuSearchCard } from '@/components/feature/MenuSearchCard';
 import { DiscoveryResultRow } from '@/services/discoveryResultsService';
 import { CampaignBanner } from '@/components/feature/CampaignBanner';
 import { NotificationBell } from '@/components/feature/NotificationBell';
-import { RefreshButton } from '@/components/feature/RefreshButton';
+import { PullRefreshIndicator } from '@/components/feature/PullRefreshIndicator';
+import { useWebPullRefresh } from '@/hooks/useWebPullRefresh';
 import { fontSize, fontWeight, radius, spacing, ThemeColors } from '@/constants/theme';
 
 export default function DiscoverScreen() {
@@ -22,6 +23,7 @@ export default function DiscoverScreen() {
   const { query, setQuery, main, sub, setSub, onlyOpen, setOnlyOpen, ratingSort, setRatingSort,
     businesses, results, menuSearch, searching, counts, activeMain, handleMain, locating, locationError, refreshing, error, refresh } = useDiscoveryFeed();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const pull = useWebPullRefresh(listRef, refresh, refreshing);
   const renderResult = useCallback(({ item: row }: { item: DiscoveryResultRow }) => {
     switch (row.kind) {
       case 'business': return <BusinessCard business={row.business} />;
@@ -53,7 +55,7 @@ export default function DiscoverScreen() {
         <View style={styles.brandBlock}>
           <Text style={styles.brand}>Caddeden</Text>
         </View>
-        <View style={styles.headerActions}><RefreshButton onPress={refresh} refreshing={refreshing} /><NotificationBell /></View>
+        <NotificationBell />
       </View>
 
       <View style={styles.searchWrap}>
@@ -61,6 +63,7 @@ export default function DiscoverScreen() {
         <SearchBar value={query} onChangeText={setQuery} placeholder="Örn. döner, kafe, saç kesimi" label="İşletme, kategori veya menüdeki ürün ve hizmet adını ara" maxLength={200} />
       </View>
 
+      <PullRefreshIndicator pull={pull} refreshing={refreshing} top={190} />
       <FlatList
         ref={listRef}
         data={results}
@@ -143,7 +146,6 @@ const createStyles = (colors: ThemeColors) =>
     borderTopColor: colors.brand,
     borderBottomColor: colors.brand,
   },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   brandBlock: { flex: 1, paddingRight: spacing.sm },
   feedError: { gap: spacing.sm, marginBottom: spacing.lg },
   brand: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.primaryDark, letterSpacing: -0.5 },

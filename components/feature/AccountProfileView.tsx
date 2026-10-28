@@ -14,7 +14,8 @@ import { useTabScrollToTop } from '@/hooks/useTabScrollToTop';
 import { useThemeStyles } from '@/hooks/useThemeStyles';
 import { useProfileLogout } from '@/hooks/useProfileLogout';
 import { AppearanceSettings } from './AppearanceSettings';
-import { RefreshButton } from './RefreshButton';
+import { PullRefreshIndicator } from './PullRefreshIndicator';
+import { useWebPullRefresh } from '@/hooks/useWebPullRefresh';
 import { fontSize, spacing, radius, ThemeColors } from '@/constants/theme';
 interface AccountProfileViewProps { businessPage?: boolean }
 interface ProfileAction { id: string; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; onPress: () => void; danger?: boolean }
@@ -26,6 +27,7 @@ export const AccountProfileView = memo(function AccountProfileView({ businessPag
   const listRef = useTabScrollToTop<ProfileAction>();
   const { user, savedBusinessIds, savedPosts, savedReels, savedCampaigns, notificationsEnabled, setNotificationsEnabled } = useApp();
   const m = useProfileOverview(); const guest = !authUser;
+  const pull = useWebPullRefresh(listRef, () => void m.refresh(), m.refreshing);
   const saved = savedBusinessIds.length + savedPosts.length + savedReels.length + savedCampaigns.length;
   const rows: ProfileAction[] = [
     { id: 'complaint', label: 'Şikâyet / Sorun Bildir', icon: 'flag-outline', onPress: () => router.push('/complaint') },
@@ -34,10 +36,10 @@ export const AccountProfileView = memo(function AccountProfileView({ businessPag
     ...(!guest && !isAdmin ? [{ id: 'delete', label: 'Hesabımı Sil', icon: 'account-remove-outline' as const, danger: true, onPress: () => router.push('/account-delete') }] : []),
     ...(!guest ? [{ id: 'logout', label: busy ? 'Çıkış yapılıyor…' : 'Çıkış Yap', icon: 'logout' as const, danger: true, onPress: confirmLogout }] : []),
   ];
-  return <SafeAreaView style={s.screen} edges={['top']}><FlatList ref={listRef} data={rows} keyExtractor={item => item.id} refreshControl={<RefreshControl refreshing={m.refreshing} onRefresh={() => void m.refresh()} tintColor={colors.primary} />} contentContainerStyle={s.content} showsVerticalScrollIndicator={false} ItemSeparatorComponent={() => <View style={s.space} />}
+  return <SafeAreaView style={s.screen} edges={['top']}><PullRefreshIndicator pull={pull} refreshing={m.refreshing} top={8} /><FlatList ref={listRef} data={rows} keyExtractor={item => item.id} refreshControl={<RefreshControl refreshing={m.refreshing} onRefresh={() => void m.refresh()} tintColor={colors.primary} />} contentContainerStyle={s.content} showsVerticalScrollIndicator={false} ItemSeparatorComponent={() => <View style={s.space} />}
     renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy, busy: busy && item.id === 'logout' }} disabled={busy} style={({ pressed }) => [s.row, busy ? s.disabled : null, pressed ? s.pressed : null]} onPress={item.onPress}><MaterialCommunityIcons name={item.icon} size={22} color={item.danger ? colors.danger : colors.primary} /><Text style={[s.rowText, item.danger ? { color: colors.danger } : null]}>{item.label}</Text><MaterialCommunityIcons name="chevron-right" size={22} color={colors.textFaint} /></Pressable>}
     ListHeaderComponent={<View style={s.blocks}>
-      <View style={s.identity}><OwnCafePhoto name={user.name} size={60} /><View style={s.info}><Text style={s.title}>{user.name}</Text><Text style={s.subtle}>{isAdmin ? 'Yönetici Hesabı' : isBusiness ? 'İşletme Hesabı' : guest ? 'Misafir' : 'Kullanıcı Hesabı'}</Text>{authUser ? <Text style={s.subtle}>{authUser.email}</Text> : null}</View>{authUser ? <RefreshButton onPress={() => void m.refresh()} refreshing={m.refreshing} label="Profili yenile" /> : null}</View>
+      <View style={s.identity}><OwnCafePhoto name={user.name} size={60} /><View style={s.info}><Text style={s.title}>{user.name}</Text><Text style={s.subtle}>{isAdmin ? 'Yönetici Hesabı' : isBusiness ? 'İşletme Hesabı' : guest ? 'Misafir' : 'Kullanıcı Hesabı'}</Text>{authUser ? <Text style={s.subtle}>{authUser.email}</Text> : null}</View></View>
       <View style={s.stats}>{(isBusiness || businessPage ? [{ label: 'İşletme', value: m.owned.length }, { label: 'Yayında', value: m.owned.filter(b => b.is_published).length }, { label: 'Onayda', value: m.owned.filter(b => b.approval_status === 'pending').length }] : [{ label: 'Sipariş', value: m.myOrders.length }, { label: 'Rezervasyon / Randevu', value: m.myReservations.length }, { label: 'Kayıtlı', value: saved }]).map(item => <View key={item.label} style={s.stat}><Text style={s.title}>{item.value}</Text><Text style={s.small}>{item.label}</Text></View>)}</View>
       {m.error ? <View style={s.notice}><Text style={s.error}>{m.error}</Text></View> : null}
       {isBusiness || businessPage ? <Button label="İşletmelerim" icon="storefront-outline" variant="secondary" onPress={() => router.push('/(business-tabs)')} /> : <><Text style={s.heading}>Kayıtlılarım</Text><Pressable style={({ pressed }) => [s.row, pressed ? s.pressed : null]} onPress={() => router.push('/saved')}><MaterialCommunityIcons name="bookmark-multiple-outline" color={colors.primary} size={26} /><View style={s.info}><Text style={s.heading}>Tüm kayıtlarım</Text><Text style={s.subtle}>{saved} kayıt · İşletme, gönderi, Cadde TV ve kampanya</Text></View><MaterialCommunityIcons name="chevron-right" color={colors.primary} size={24} /></Pressable>{!guest ? <Button label="Sipariş, Rezervasyon ve Randevu Geçmişim" variant="secondary" icon="history" onPress={() => router.push('/history')} /> : <Button label="Giriş Yap / Kayıt Ol" icon="login" onPress={() => router.push('/auth')} />}</>}

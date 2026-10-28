@@ -6,8 +6,10 @@ const clean = (s) => String(s).replace(/[\r\n]+/g, ' ').replace(/eyJ[\w-]{20,}\.
   const b = await chromium.launch();
   const p = await b.newPage();
   const errs = [], fails = [];
+  let apiCalls = 0;
   p.on('console', (m) => { if (m.type() === 'error') errs.push(clean(m.text())); });
   p.on('pageerror', (e) => errs.push('PAGEERROR ' + clean(e.message)));
+  p.on('request', (r) => { if (r.url().includes('.supabase.co/rest/v1/')) apiCalls++; });
   p.on('requestfailed', (r) => fails.push(clean(r.url()) + ' ' + clean(r.failure()?.errorText)));
   p.on('response', (r) => { if (r.status() >= 400) fails.push(r.status() + ' ' + clean(r.url())); });
   const resp = await p.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) => { errs.push('GOTO ' + clean(e.message)); return null; });
@@ -24,6 +26,11 @@ const clean = (s) => String(s).replace(/[\r\n]+/g, ' ').replace(/eyJ[\w-]{20,}\.
   console.log(`::notice title=smoke gorunen metin::${text || '(BOŞ SAYFA)'}`);
   errs.slice(0, 6).forEach((e) => console.log(`::warning title=smoke konsol hatasi::${e}`));
   fails.slice(0, 6).forEach((e) => console.log(`::warning title=smoke ag hatasi::${e}`));
+  const before = apiCalls;
+  await p.mouse.move(200, 500);
+  for (let i = 0; i < 4; i++) { await p.mouse.wheel(0, -120); await p.waitForTimeout(60); }
+  await p.waitForTimeout(2500);
+  console.log(`::notice title=smoke yenileme::asagi cekme sonrasi yeni supabase istegi=${apiCalls - before}`);
   await p.screenshot({ path: 'smoke.png', fullPage: true });
   await b.close();
 })().catch((e) => { console.log(`::error title=smoke coktu::${clean(e.message)}`); process.exit(1); });

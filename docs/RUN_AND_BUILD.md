@@ -54,4 +54,4 @@ Kayıt (e-posta kodu) → giriş → oturumun uygulama yeniden açılınca korun
 menü ürünü · müşteri siparişi → işletme onay/yolda/teslim · yıldız/değerlendirme · yönetici girişi ve işletme onayı · iki farklı işletmenin birbirinin siparişini görememesi.
 
 ## 6) Yenileme
-Keşfet, Gönderiler ve Profil sayfalarında başlıkta yenile düğmesi (↻) vardır; web'de ekranı aşağı çekme çalışmadığı için düğme asıl yoldur, telefonda aşağı çekme de çalışır. Profil yenilemesi hesap/rol bilgisini ve sipariş, rezervasyon ve işletme listelerini yeniden okur.
+Keşfet, Gönderiler ve Profil sayfaları aşağı çekilince yenilenir (düğme yoktur). Telefonda `RefreshControl`, web'de `hooks/useWebPullRefresh.ts` kullanılır: liste en üstteyken parmakla aşağı çekmek ya da fare/izleme dörtgeniyle yukarı kaydırmaya devam etmek göstergeyi açar, eşik aşılınca yeniler. Profil yenilemesi hesap/rol bilgisini ve sipariş, rezervasyon ve işletme listelerini yeniden okur.
