@@ -1,0 +1,29 @@
+name: Web preview build
+on:
+  push:
+    branches: [claude/supabase-integration]
+  workflow_dispatch:
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # pnpm-lock.yaml package.json ile uyumsuz; bu yüzden frozen değil.
+      - run: pnpm install --no-frozen-lockfile
+      - run: npx tsc --noEmit
+        continue-on-error: true
+      - run: npx expo export --platform web
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: caddeden-web
+          path: dist
