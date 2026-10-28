@@ -15,7 +15,13 @@ cp .env.example .env
 # EXPO_PUBLIC_SUPABASE_URL=https://<proje-ref>.supabase.co
 # EXPO_PUBLIC_SUPABASE_ANON_KEY=<publishable/anon anahtar>
 ```
+`.env` yoksa ya da değerler boşsa/yer tutucuysa uygulama çökmez; "Supabase yapılandırması gerekli" kurulum ekranı açılır (`constants/supabaseConfig.ts`, `components/feature/SetupRequiredView.tsx`). `.env` değiştirince `pnpm expo start -c` ile yeniden başlatın.
 `service_role` anahtarını `.env`'e veya kaynağa yazmayın; istemci kodunda hiçbir yerde kullanılmaz (taranıp doğrulandı).
+
+**Kilit dosyası uyarısı:** `pnpm-lock.yaml` güncel değil — `package.json` 137 paket listeliyor, kilit dosyasının kök bölümü yalnızca 46 tanesini içeriyor
+(örn. `expo-notifications`, `zustand`, `nativewind`, `react-native-maps` yok) ve bazı sürümler farklı (`expo` ~53.0.9 / kilit 53.0.12, `react-native` 0.79.3 / kilit 0.79.4,
+`expo-router` ~5.0.7 / kilit 5.1.0). Bu yüzden `pnpm install --frozen-lockfile` başarısız olur; ilk kurulumda düz `pnpm install` kullanın ve oluşan kilit dosyasını commit edin.
+Sürümleri ben değiştirmedim; kayıt defterine erişilemediği için `npx expo install --check` ile uyum denetimi de yapılamadı.
 
 ## 3) Başlatma
 ```bash

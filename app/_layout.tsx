@@ -32,8 +32,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { businessProfileLayout, spacing, fontSize } from '@/constants/theme';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
+import { isSupabaseConfigured } from '@/constants/supabaseConfig';
+import { SetupRequiredView } from '@/components/feature/SetupRequiredView';
 
 export default function RootLayout() {
+  // Supabase değişkenleri yoksa istemci oluşturulamaz ve AuthProvider çöker; açıklayıcı bir kurulum ekranı göster.
+  if (!isSupabaseConfigured) return <SetupRequiredView />;
   return (
     <AlertProvider>
       <SafeAreaProvider>
