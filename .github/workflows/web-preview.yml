@@ -44,6 +44,11 @@ jobs:
           try{const r=JSON.parse(Buffer.from(k.split('.')[1],'base64url').toString()).role;console.log('anahtar rolü:',r);if(r==='service_role'){console.error('service_role anahtarı istemciye konamaz');process.exit(1)}}catch(e){console.log('JWT değil (publishable anahtar olabilir)')}
           if(k.startsWith('sb_secret_')){console.error('secret anahtar istemciye konamaz');process.exit(1)}
           "
+      - name: Check Supabase reachability and auth settings
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: node scripts/check-supabase.cjs
       # Secret'lar yalnızca bu adımda Expo'ya aktarılır; yoksa önizleme kurulum ekranını gösterir.
       - run: npx expo export --platform web
         env:
