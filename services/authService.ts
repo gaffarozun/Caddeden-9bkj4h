@@ -1,6 +1,7 @@
 // Powered by OnSpace.AI
 import { getSupabaseClient } from '@/template';
 import { BusinessApprovalStatus, loadBusinessApproval } from './businessApprovalService';
+import { describeAuthError } from './authErrors';
 import { logoutCurrentSession, SessionLogoutClient } from './sessionLogoutService';
 
 const sb = () => getSupabaseClient();
@@ -77,7 +78,7 @@ export async function fetchProfile(userId: string, fallbackEmail: string): Promi
 
 export async function signInWithPassword(email: string, password: string, account?: 'user' | 'business') {
   const { data, error } = await sb().auth.signInWithPassword({ email: email.trim(), password });
-  if (error || !data.user) return { error: error?.message ?? 'Oturum doğrulanamadı.' };
+  if (error || !data.user) return { error: error ? describeAuthError(error, 'signIn') : 'Oturum doğrulanamadı.' };
   try {
     const profile = await fetchProfile(data.user.id, data.user.email ?? '');
     if (account && profile.role !== 'admin' && profile.role !== account) {
@@ -85,7 +86,7 @@ export async function signInWithPassword(email: string, password: string, accoun
       return { error: logoutError?.message ?? (profile.role === 'business' ? 'Bu bir işletme hesabıdır. İşletme girişini seçin.' : 'Bu bir kullanıcı hesabıdır. Kullanıcı girişini seçin. Yeni işletme hesabı için İşletme bölümünden kayıt olun.') };
     }
     return { error: null };
-  } catch (reason) { return { error: reason instanceof Error ? reason.message : 'Hesap doğrulanamadı.' }; }
+  } catch (reason) { return { error: describeAuthError(reason, 'signIn.profile') }; }
 }
 
 export async function sendEmailOtp(email: string, meta?: RegisterMeta) {
@@ -93,7 +94,7 @@ export async function sendEmailOtp(email: string, meta?: RegisterMeta) {
     email: email.trim(),
     options: { shouldCreateUser: true, data: { ...meta, role: meta?.role === 'business' ? 'business' : 'user' } },
   });
-  return { error: error?.message ?? null };
+  return { error: error ? describeAuthError(error, 'sendOtp') : null };
 }
 
 export async function verifyOtpAndRegister(
@@ -107,7 +108,7 @@ export async function verifyOtpAndRegister(
     token: token.trim(),
     type: 'email',
   });
-  if (error) return { error: error.message };
+  if (error) return { error: describeAuthError(error, 'verifyOtp') };
 
   if (!data.user) return { error: 'Doğrulanmış hesap bulunamadı.' };
   const profile = await fetchProfile(data.user.id, data.user.email ?? '');
@@ -125,7 +126,7 @@ export async function verifyOtpAndRegister(
       gender: meta.gender,
     },
   });
-  if (upErr) return { error: upErr.message };
+  if (upErr) return { error: describeAuthError(upErr, 'updateUser') };
 
   if (data.user) {
     // Account type is assigned once by handle_new_user; client never changes it.
@@ -137,7 +138,7 @@ export async function verifyOtpAndRegister(
     if (meta.last_name !== undefined) patch.last_name = meta.last_name ?? null;
     if (meta.gender !== undefined) patch.gender = meta.gender ?? null;
     const { error: profileError } = await sb().from('user_profiles').update(patch).eq('id', data.user.id);
-    if (profileError) return { error: profileError.message };
+    if (profileError) return { error: describeAuthError(profileError, 'profileUpdate') };
   }
   return { error: null };
 }
