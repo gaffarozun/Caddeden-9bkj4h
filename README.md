@@ -20,6 +20,10 @@ pnpm expo start           # veya: pnpm android | pnpm ios | pnpm web
 Boş proje kurulumu: [`supabase/BASELINE_SETUP.md`](supabase/BASELINE_SETUP.md). Ayrıntılar: [`supabase/README.md`](supabase/README.md). Bulgular ve açık maddeler:
 [`docs/supabase-integration-report.md`](docs/supabase-integration-report.md).
 
+## Çalıştırma ve derleme
+
+`docs/RUN_AND_BUILD.md`: başlatma, web önizleme, Android/iOS (EAS) ve elle test listesi.
+
 ## Belgeler
 
 Özellik bazlı notlar `docs/` altındadır.

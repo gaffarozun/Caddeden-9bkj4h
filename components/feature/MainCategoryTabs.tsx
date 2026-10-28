@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { MAIN_CATEGORIES } from '@/services/categories';
-import { MainCategoryId } from '@/services/types';
+import { MainCategoryId } from '@/services/categories';
 import { colors, fontSize, fontWeight, radius, spacing } from '@/constants/theme';
 
 interface MainCategoryTabsProps {

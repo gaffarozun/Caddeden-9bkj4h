@@ -24,7 +24,7 @@ export const CaddedenIntro = memo(function CaddedenIntro({ intro }: CaddedenIntr
     >
       <Animated.View style={[StyleSheet.absoluteFillObject, intro.streetStyle]} pointerEvents="none">
         <Image
-          source={require('@/assets/images/caddeden-intro-night-street.webp')}
+          source={require('@/assets/images/caddeden-intro-street.webp')}
           style={StyleSheet.absoluteFillObject}
           contentFit="cover"
           transition={0}

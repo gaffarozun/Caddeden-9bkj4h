@@ -29,7 +29,7 @@ export function runFeedOrderChecks(): string {
   const recommendations = sortDiscoveryBusinesses([business, higher], 'recommended');
   assert(recommendations[0].id === business.id, 'Recommended must not prioritize open/name/rating order.');
   assert(sortDiscoveryBusinesses([business, higher], 'highest')[0].id === higher.id, 'Explicit highest-rating sort must remain.');
-  assert(discoveryRatingSorts.length === 2, 'Discovery must offer exactly two sorting options.');
-  assert(discoveryRatingSorts.map(item => item.id).join(',') === 'recommended,highest', 'Only recommended and highest-rating choices must remain.');
+  assert(discoveryRatingSorts.length === 3, 'Discovery must offer recommended, highest-rating and nearest sorting options.');
+  assert(discoveryRatingSorts.map(item => item.id).join(',') === 'recommended,highest,nearest', 'Recommended, highest-rating and nearest choices must remain.');
   return 'passed: random ordering, immutability, polling stability, updates, removal, deduplication and explicit rating sorts';
 }

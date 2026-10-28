@@ -1,7 +1,7 @@
 # Caddeden açılışı
 
 - Karanlık gökyüzü altında, sokak lambaları ve kafe ışıklarıyla aydınlanan yokuş aşağı bir cadde; ortada palmiyeli refüj, bir tarafta aşağı gidiş ve diğer tarafta dönüş yolu.
-- Yerel `assets/images/caddeden-intro-night-street.webp` illüstrasyonu `expo-image` ile gösterilir. Sabit hızda ilerleme hissi veren kamera yaklaşması, yükselerek beliren Caddeden adı ve kısa kapanış geçişi vardır. Araçlar ve palmiyeler illüstrasyonun parçalarıdır; bağımsız hareket etmezler.
+- Yerel `assets/images/caddeden-intro-street.webp` illüstrasyonu `expo-image` ile gösterilir. Sabit hızda ilerleme hissi veren kamera yaklaşması, yükselerek beliren Caddeden adı ve kısa kapanış geçişi vardır. Araçlar ve palmiyeler illüstrasyonun parçalarıdır; bağımsız hareket etmezler.
 - Toplam süre 4.200 ms; kamera hareketi 3.700 ms, çıkış geçişi 280 ms. Fotoğraf yüklenmesi, tema tercihi veya ağ yanıtı bu süreyi uzatmaz.
 - Animasyon kök navigatörün üzerinde çalışır. Oturum, roller, işletme onayı ve yönlendirmeler altta yüklenmeye devam eder; rotalar değiştirilmez.
 - Sekme değişimi, giriş/çıkış ve uygulamayı arka plandan öne getirme tekrar oynatmaz. Yeni kök uygulama oturumunda yeniden gösterilir.

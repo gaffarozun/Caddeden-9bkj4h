@@ -177,7 +177,7 @@ aradığı için son durumda başarısızdır. Bunlar beklenen ve baseline hatas
 
 - **Kaynak şema yok:** sütun adları/tipleri/kısıtlar koddan çıkarıldı. OnSpace'te ek sütun, farklı tip veya ek kısıt olabilir; veri taşırken uyuşmazlık çıkarsa bu dosya düzeltilmelidir.
   Veri taşınmayacağı için (kullanıcı kararı) risk düşük, ama kodun hiç kullanmadığı sütunlar yoktur.
-- **Eksik görsel:** `assets/images/caddeden-intro-night-street.webp` depoda yok (`CaddedenIntro.tsx` bunu `require` eder); bundler bu dosya olmadan derlemez. OnSpace'ten alınıp eklenmeli.
+- **Görsel:** `caddeden-intro-night-street.webp` OnSpace bulutundaydı ve alınamadı; `CaddedenIntro.tsx` depodaki `assets/images/caddeden-intro-street.webp` görselini kullanacak şekilde güncellendi (aynı sahne ailesi, 672×1200). Gece görselini OnSpace'ten alırsanız dosyayı ekleyip `require` yolunu geri çevirebilirsiniz.
 - **Derleme/uygulama testi yapılmadı:** npm kayıt defterine erişim yok; `tsc`, lint, Expo derlemesi ve cihaz akışları denenmedi.
 - **Gerçek Supabase davranışı:** `auth`/`storage` yerel iskeletle taklit edildi; GoTrue, Storage API, PostgREST şema önbelleği ve Edge Function çalışması gerçek projede denenmedi.
 - **Yönetici e-postası** SQL ve Edge Function'larda sabit (`caddeden.app@gmail.com`).
