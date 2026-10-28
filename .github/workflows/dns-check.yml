@@ -1,0 +1,12 @@
+name: DNS check (read-only)
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/supabase-integration]
+    paths: ['scripts/check-dns.sh', '.github/workflows/dns-check.yml']
+jobs:
+  dns:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/check-dns.sh caddeden.com.tr
