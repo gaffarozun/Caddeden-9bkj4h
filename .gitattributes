@@ -1,0 +1,3 @@
+# SQL dosyaları her ortamda LF satır sonu ile kalmalı (CRLF, fonksiyon gövdelerine CR sokar).
+*.sql text eol=lf
+*.ts text eol=lf

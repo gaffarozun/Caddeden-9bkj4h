@@ -16,34 +16,35 @@ aynı `20261020` önekini taşıyan dosyalar sürüm çakışması yaratır. Mak
 | # | Dosya (`supabase/migrations/`) |
 |---|---|
 | 1 | `20261001_baseline_inferred_schema.sql` ← **yeni temel şema** |
-| 2 | `20261020_independent_stars.sql` |
-| 3 | `20261020_account_role_separation.sql` |
-| 4 | `20261020_account_type_decisions.sql` |
-| 5 | `20261020_account_decision_relationship.sql` |
-| 6 | `20261020_account_rating_state.sql` |
-| 7 | `20261020_customers_without_approval.sql` |
-| 8 | `20261020_business_account_approval.sql` |
-| 9 | `20261020_feedback_criteria.sql` |
-| 10 | `20261020_paid_campaign_ticker.sql` |
-| 11 | `20261020_university_messages.sql` |
-| 12 | `20261021_cadde_tv.sql` |
-| 13 | `20261021_cadde_tv_broadcast_timezone.sql` |
-| 14 | `20261022_menu_product_search.sql` |
-| 15 | `20261022_university_withdrawal.sql` |
-| 16 | `20261023_cafe_photo_privacy.sql` |
-| 17 | `20261023_content_order_messages.sql` |
-| 18 | `20261023_next_open_order_ratings.sql` |
-| 19 | `20261023_order_reports.sql` |
-| 20 | `20261024_cafe_seating_social.sql` |
-| 21 | `20261024_cafe_venue_page.sql` |
-| 22 | `20261024_cafe_arrival_prompt.sql` |
-| 23 | `20261024_venue_presence_40m_privacy.sql` |
-| 24 | `20261024_venue_social_mutual_instagram.sql` |
-| 25 | `20261024_all_business_participation.sql` |
-| 26 | `20261025_venue_live_inbox.sql` |
-| 27 | `20261025_venue_refresh_serialization.sql` |
-| 28 | `20261026_venue_radius_50m.sql` |
-| 29 | `verify/readiness_check.sql` ← sonuçta **FAIL satırı kalmamalı** |
+| 2 | `20261002_normalize_function_sources.sql` ← **yeni**: satır sonu (CRLF) onarımı, tekrar çalıştırılabilir |
+| 3 | `20261020_independent_stars.sql` |
+| 4 | `20261020_account_role_separation.sql` |
+| 5 | `20261020_account_type_decisions.sql` |
+| 6 | `20261020_account_decision_relationship.sql` |
+| 7 | `20261020_account_rating_state.sql` |
+| 8 | `20261020_customers_without_approval.sql` |
+| 9 | `20261020_business_account_approval.sql` |
+| 10 | `20261020_feedback_criteria.sql` |
+| 11 | `20261020_paid_campaign_ticker.sql` |
+| 12 | `20261020_university_messages.sql` |
+| 13 | `20261021_cadde_tv.sql` |
+| 14 | `20261021_cadde_tv_broadcast_timezone.sql` |
+| 15 | `20261022_menu_product_search.sql` |
+| 16 | `20261022_university_withdrawal.sql` |
+| 17 | `20261023_cafe_photo_privacy.sql` |
+| 18 | `20261023_content_order_messages.sql` |
+| 19 | `20261023_next_open_order_ratings.sql` |
+| 20 | `20261023_order_reports.sql` |
+| 21 | `20261024_cafe_seating_social.sql` |
+| 22 | `20261024_cafe_venue_page.sql` |
+| 23 | `20261024_cafe_arrival_prompt.sql` |
+| 24 | `20261024_venue_presence_40m_privacy.sql` |
+| 25 | `20261024_venue_social_mutual_instagram.sql` |
+| 26 | `20261024_all_business_participation.sql` |
+| 27 | `20261025_venue_live_inbox.sql` |
+| 28 | `20261025_venue_refresh_serialization.sql` |
+| 29 | `20261026_venue_radius_50m.sql` |
+| 30 | `verify/readiness_check.sql` ← sonuçta **FAIL satırı kalmamalı** |
 
 Notlar:
 - Baseline dosyası başında bir koruma bloğu içerir: `account_admin()`, `business_star_ratings` veya `cafe_rooms` zaten varsa
@@ -51,6 +52,32 @@ Notlar:
 - Bağımlılıklar: sıra 2–8 arası dosyalar birbirine bağlıdır; `20261020_feedback_criteria` baseline'daki
   `feedback_read/feedback_write/feedback_ratings/feedback_actor` gövdelerini metin değiştirerek yamalar, bu yüzden baseline'dan önce çalışamaz.
 - psql tercih ederseniz: `HEDEF_DB_URL='postgresql://…' ./supabase/apply_with_psql.sh` (bağlantı dizesini depoya yazmayın).
+
+### 1b) Hata: `Unexpected feedback_write entry contract` (20261020_independent_stars.sql)
+
+**Neden (yerelde birebir yeniden üretildi):** baseline dosyası CRLF (Windows) satır sonlarıyla yapıştırılırsa/indirilirse fonksiyon gövdeleri
+`begin` + CR + LF içerir. `20261020_independent_stars.sql` fonksiyon tanımında `begin` + LF bağlantı noktasını arar, bulamaz ve (kasıtlı olarak) durur.
+Hedef veritabanını görmediğim için bunun sizin durumunuzdaki neden olduğunu doğrulayamadım; aşağıdaki tanı sorgusu bunu gösterir.
+Hata başka bir gövde farkından geliyorsa `feedback_contract_check.sql` "BEKLENMEYEN GÖVDE" der ve hiçbir şey otomatik değiştirilmez.
+
+**Kısmi uygulama:** `20261020_independent_stars.sql` tek işlemdir (`begin; … commit;`); hata verince hiçbir değişiklik kalmaz.
+SQL Editor oturumunda açık kalan başarısız işlem için önce ayrı bir sorgu olarak `rollback;` çalıştırın.
+
+Hedefte sırayla (hepsi salt okunur ya da tekrar çalıştırılabilir):
+1. `rollback;`
+2. `verify/feedback_contract_check.sql` (salt okunur): "CR VAR" ve "independent_stars ... yok" görmelisiniz.
+3. `migrations/20261002_normalize_function_sources.sql` (yalnızca CR temizler; güvenlik koşulları ve veri değişmez; beklenmeyen gövdede üzerine yazmadan durur).
+4. `verify/feedback_contract_check.sql` tekrar: dört fonksiyon "uygun".
+5. `migrations/20261020_independent_stars.sql` ve sıradaki dosyalar (`apply_order.txt`).
+
+| Adım | Güvenle tekrar çalıştırılabilir mi? |
+|---|---|
+| `20261001_baseline_inferred_schema.sql` | Evet, ancak yalnızca `account_admin()`, `business_star_ratings`, `cafe_rooms` **henüz yokken** (korumalı); tablolar `if not exists`, fonksiyon/politikalar `create or replace`/`drop if exists`. Önceki sürümü uyguladıysanız güncel dosyayı bir kez daha çalıştırmak tetikleyicileri ve politikaları yeniler; FK kuralları için 20261002 yeterlidir. |
+| `20261002_normalize_function_sources.sql` | Evet, her zaman (yalnızca henüz CR içeren fonksiyonlara ve CASCADE kalmış FK'lara dokunur). |
+| `20261020_independent_stars.sql` | Evet (tek işlem, `if not exists`/`create or replace`; kapı yalnızca bir kez eklenir). |
+| Sonraki migration'lar | Başarıyla tamamlananları tekrar çalıştırmayın; yarım kalan dosya tek işlemdi, hata verdiyse hiçbir şey kalmadı, düzeltip aynı dosyayı çalıştırın. Her dosyayı çalıştırmadan önce `apply_order.txt` sırasını izleyin. |
+
+Önlem: depoda `.gitattributes` SQL dosyalarını LF olarak tutar; GitHub'dan "Raw" ile kopyalayın veya `git clone` kullanın, editörde CRLF'ye çevirmeyin.
 
 ## 2) Baseline ne oluşturur (kodun gerektirdiği kadar)
 

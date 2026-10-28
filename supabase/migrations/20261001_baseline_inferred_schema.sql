@@ -1127,5 +1127,32 @@ drop policy if exists base_evidence_own_delete on storage.objects;
 create policy base_evidence_own_delete on storage.objects for delete to authenticated
  using (bucket_id='feedback-evidence' and (storage.foldername(name))[1]=auth.uid()::text);
 
+do $norm$
+declare r record; def text; n integer:=0;
+begin
+ -- Satır sonu (CR) yalnızca boşluktur; fonksiyon davranışı değişmez. Yamalı sonraki migration'lar `begin` + LF bağlantı noktası arar.
+ for r in select p.oid from pg_proc p join pg_language l on l.oid=p.prolang
+          where p.pronamespace='public'::regnamespace and p.prokind='f' and l.lanname in ('plpgsql','sql')
+            and position(chr(13) in p.prosrc)>0
+            and not exists(select 1 from pg_depend d where d.objid=p.oid and d.deptype='e') loop
+  def:=replace(pg_get_functiondef(r.oid),chr(13),'');
+  execute def; n:=n+1;
+ end loop;
+ raise notice 'CR temizlenen fonksiyon sayısı: %',n;
+end;
+$norm$;
+do $verify$
+declare f text; src text;
+begin
+ foreach f in array array['public.feedback_write(text,jsonb)','public.feedback_read(uuid,text,integer)'] loop
+  if to_regprocedure(f) is null then raise exception '% yok. Önce 20261001_baseline_inferred_schema.sql uygulanmalı.',f; end if;
+  select pg_get_functiondef(to_regprocedure(f)) into src;
+  if position(chr(13) in src)>0 then raise exception '% hâlâ CR içeriyor; satır sonları temizlenemedi.',f; end if;
+  if strpos(src,E'begin\n')=0 and strpos(src,'-- experience_feature_gate')=0 then
+   raise exception '% beklenen baseline gövdesine sahip değil (begin + yeni satır bulunamadı). Üzerine yazılmadı; fonksiyon tanımını inceleyin.',f; end if;
+ end loop;
+end;
+$verify$;
+
 notify pgrst,'reload schema';
 commit;

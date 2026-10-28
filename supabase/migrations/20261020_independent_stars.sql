@@ -104,12 +104,14 @@ do $migration$
 declare source text;
 begin
  select pg_get_functiondef('public.feedback_write(text,jsonb)'::regprocedure) into source;
+ source:=replace(source,E'\r',''); -- yalnızca CRLF satır sonu toleransı; sözleşme kontrolü aşağıda aynen duruyor
  if strpos(source,'-- experience_feature_gate')=0 then
   if strpos(source,E'begin\n')=0 then raise exception 'Unexpected feedback_write entry contract'; end if;
   source:=replace(source,E'begin\n',E'begin\n -- experience_feature_gate\n if p_action in (''review'',''delete_review'',''suggest'',''support'',''review_reply'',''suggestion_reply'') and not public.experiences_enabled() then\n raise exception ''Müşteri deneyimleri yönetici onayı bekliyor.'' using errcode=''42501''; end if;\n');
   execute source;
  end if;
  select pg_get_functiondef('public.feedback_read(uuid,text,integer)'::regprocedure) into source;
+ source:=replace(source,E'\r','');
  if strpos(source,'-- experience_feature_gate')=0 then
   if strpos(source,E'begin\n')=0 then raise exception 'Unexpected feedback_read entry contract'; end if;
   source:=replace(source,E'begin\n',E'begin\n -- experience_feature_gate\n if not public.experiences_enabled() and not public.feedback_admin_allowed() then\n raise exception ''Müşteri deneyimleri yönetici onayı bekliyor.'' using errcode=''42501''; end if;\n');
