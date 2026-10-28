@@ -19,3 +19,7 @@
 6. Yavaş veya kapalı ağda açılış uzamamalı; mevcut oturum/tema yükleme durumu kendi normal akışında sürmeli.
 
 Gerçek cihaz kontrolleri bu geliştirme turunda çalıştırılmadı.
+
+## Web açılışı
+Web'de açılış, `assets/video/caddeden-intro.mp4` (1,7 sn, sessiz, gece caddesi + "Caddeden / Bir cadde, birçok keşif.") videosuyla oynar (`components/feature/CaddedenIntro.web.tsx`, `expo-video`). Toplam süre 2.600 ms; video biter bitmez son kare tutulur, sonra uygulamaya geçilir. Video yüklenemezse `caddeden-intro-web-poster.jpg` ilk karesi görünür. Video 296×572 çözünürlüktedir; geniş ekranda büyütülmemesi için `contain` ile ortalanır. Daha net bir sonuç için kaynak videonun yüksek çözünürlüklü hali gerekir.
+Not: yerel (iOS/Android) açılış hâlâ `caddeden-intro-street.webp` görselini kullanır; bu görsel gündüz sokağıdır ve videodaki gece caddesiyle aynı değildir.
