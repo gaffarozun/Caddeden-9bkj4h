@@ -1,10 +1,17 @@
-name: Web preview build
+name: Web preview (GitHub Pages)
 on:
   push:
     branches: [claude/supabase-integration]
   workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
 jobs:
-  web:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,15 +22,28 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       # pnpm-lock.yaml package.json ile uyumsuz; bu yüzden frozen değil.
       - run: pnpm install --no-frozen-lockfile
       - run: npx tsc --noEmit
-        continue-on-error: false
+      # Pages alt yolda (/<repo>/) servis edilir; yalnızca derleme sırasında baseUrl eklenir.
+      - name: Set baseUrl for Pages
+        run: |
+          node -e "const f='app.json';const j=require('./'+f);j.expo.experiments={...(j.expo.experiments||{}),baseUrl:'/${{ github.event.repository.name }}'};require('fs').writeFileSync(f,JSON.stringify(j,null,2))"
+      # Bilerek Supabase ortam değişkeni verilmez: önizleme "Supabase yapılandırması gerekli" ekranını gösterir, hiçbir anahtar yayınlanmaz.
       - run: npx expo export --platform web
-        env:
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-      - uses: actions/upload-artifact@v4
+      - run: touch dist/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
         with:
-          name: caddeden-web
           path: dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
