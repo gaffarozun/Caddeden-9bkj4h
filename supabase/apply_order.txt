@@ -1,0 +1,33 @@
+# Caddeden: SQL uygulama sırası (BOŞ Supabase projesi için)
+# Sıra alfabetik DEĞİLDİR (20261020_* dosyaları birbirine bağımlıdır). `supabase db push` KULLANMAYIN:
+# aynı sürüm önekini (20261020) paylaşan dosyalar çakışır. SQL Editor'a her dosyayı sırayla yapıştırıp çalıştırın.
+# Her dosya bir önceki başarılı olmadan çalıştırılmamalıdır. Hata alırsanız durun, sonrakine geçmeyin.
+migrations/20261001_baseline_inferred_schema.sql
+migrations/20261020_independent_stars.sql
+migrations/20261020_account_role_separation.sql
+migrations/20261020_account_type_decisions.sql
+migrations/20261020_account_decision_relationship.sql
+migrations/20261020_account_rating_state.sql
+migrations/20261020_customers_without_approval.sql
+migrations/20261020_business_account_approval.sql
+migrations/20261020_feedback_criteria.sql
+migrations/20261020_paid_campaign_ticker.sql
+migrations/20261020_university_messages.sql
+migrations/20261021_cadde_tv.sql
+migrations/20261021_cadde_tv_broadcast_timezone.sql
+migrations/20261022_menu_product_search.sql
+migrations/20261022_university_withdrawal.sql
+migrations/20261023_cafe_photo_privacy.sql
+migrations/20261023_content_order_messages.sql
+migrations/20261023_next_open_order_ratings.sql
+migrations/20261023_order_reports.sql
+migrations/20261024_cafe_seating_social.sql
+migrations/20261024_cafe_venue_page.sql
+migrations/20261024_cafe_arrival_prompt.sql
+migrations/20261024_venue_presence_40m_privacy.sql
+migrations/20261024_venue_social_mutual_instagram.sql
+migrations/20261024_all_business_participation.sql
+migrations/20261025_venue_live_inbox.sql
+migrations/20261025_venue_refresh_serialization.sql
+migrations/20261026_venue_radius_50m.sql
+verify/readiness_check.sql

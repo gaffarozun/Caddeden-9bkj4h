@@ -31,6 +31,12 @@ Eklenenler (hepsi yeni dosya):
 - Uyarlamalar: `tests/passwordRecoveryChecks.ts` (OTP uzunluğu testi yapılandırmaya bağlandı),
   `components/feature/PasswordRecoveryView.tsx` (kod alanı yer tutucusu uzunluğa göre), `docs/password-recovery-and-manual-feeds.md` (metin).
 
+## Güncelleme: temel şema eklendi
+
+`supabase/migrations/20261001_baseline_inferred_schema.sql` koddan çıkarılan temel şemayı içerir (tablolar, tetikleyiciler, feedback RPC'leri, RLS, bucket'lar).
+Uygulama sırası ve dashboard adımları: `supabase/BASELINE_SETUP.md`. Yerelde baseline + 27 migration hatasız uygulandı (smoke 144/144).
+Hedef Supabase projesinde **hiçbir SQL çalıştırılmadı**. Aşağıdaki 1. madde (temel şema yok) artık "kaynak şema doğrulanamadı" olarak okunmalıdır.
+
 ## Engelleyici / açık maddeler (çalışıyormuş gibi gösterilmedi)
 
 1. **Temel şema depoda yok.** `supabase/migrations/` yalnızca sonradan eklenen 27 dosyadır; `businesses`, `orders`,

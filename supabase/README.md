@@ -1,5 +1,11 @@
 # Caddeden · Supabase kurulum ve geçiş rehberi
 
+> **GÜNCEL (boş proje):** Boş `caddeden` projesi için önerilen yol artık [`BASELINE_SETUP.md`](BASELINE_SETUP.md): önce
+> `migrations/20261001_baseline_inferred_schema.sql`, sonra 27 migration `apply_order.txt` sırasıyla. Aşağıdaki
+> `export_live_schema.sql` akışı yalnızca **dolu bir kaynak veritabanından** şema çıkarmak içindir; boş hedefte kullanılmaz.
+> Hiçbir SQL hedef projede çalıştırılmış değildir.
+
+
 Bu uygulama zaten Supabase istemcisiyle (`@supabase/supabase-js`) yazılmıştır. "OnSpace Cloud", arka planda
 Supabase uyumlu bir arka uçtur ve koddaki **tek** bağımlılık `.env` içindeki proje URL'si ile anon anahtarıdır
 (başka bir OnSpace servis adresi veya SDK çağrısı yoktur). Bu yüzden geçiş, kodu yeniden yazmak değil,
@@ -125,6 +131,9 @@ yoklanır (ör. `useCaddeTv`, `useCafePhoto`). Bu çalışır durumda bırakıld
 |---|---|
 | `export/export_live_schema.sql` | Canlı şemayı çalıştırılabilir SQL olarak çıkarır (salt okunur) |
 | `verify/readiness_check.sql` | Hedef projeyi denetler (salt okunur) |
-| `migrations/` | Mevcut ek migration'lar (değiştirilmedi) |
+| `migrations/20261001_baseline_inferred_schema.sql` | Koddan çıkarılmış temel şema (yeni) |
+| `migrations/` | Diğer 27 migration (değiştirilmedi); sıra: `apply_order.txt` |
+| `BASELINE_SETUP.md`, `apply_order.txt`, `apply_with_psql.sh` | Kurulum rehberi, sıra, isteğe bağlı psql betiği |
+| `tests/local/` | YALNIZCA yerel atılabilir DB için smoke testi |
 | `tests/` | Mevcut salt okunur SQL kontrolleri (değiştirilmedi) |
 | `functions/` | Edge Function'lar (değiştirilmedi) |

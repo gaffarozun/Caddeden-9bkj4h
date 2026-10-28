@@ -14,7 +14,7 @@ expected_tables(name) as (values
   ('user_profiles'),('businesses'),('menu_items'),('business_posts'),('orders'),('reservations'),
   ('ads'),('ad_packages'),('campaigns'),('payments'),('notifications'),('notification_requests'),
   ('complaints'),('account_deletion_requests'),('admin_logs'),('admin_alerts'),('app_config'),
-  ('business_reviews'),('business_star_ratings'),('business_account_approvals'),('account_type_decisions'),
+  ('business_reviews'),('business_suggestions'),('suggestion_supports'),('feedback_rate_limits'),('business_star_ratings'),('business_account_approvals'),('account_type_decisions'),
   ('university_messages'),('order_messages'),('order_rating_receipts'),('customer_inbox'),('customer_inbox_reads'),
   ('experience_feature_settings'),('media_cleanup_queue'),('venue_profile_preferences'),
   ('cafe_rooms'),('cafe_tables'),('cafe_visits'),('cafe_social_profiles'),('cafe_instagram_requests'),('cafe_profile_photos')
@@ -30,7 +30,9 @@ expected_functions(name) as (values
   ('submit_university_message'),('university_public_messages'),('withdraw_university_message'),('moderate_university_message'),
   ('set_experience_feature'),('venue_profile_preference'),('set_venue_profile_preference'),
   ('feedback_read'),('feedback_write'),('feedback_admin_read'),('feedback_ratings'),('feedback_actor'),('feedback_admin_allowed'),
-  ('feedback_begin_account_deletion'),('feedback_delete_account_data'),
+  ('feedback_begin_account_deletion'),('feedback_delete_account_data'),('feedback_throttle'),
+  ('protect_business_cols'),('protect_ad_insert'),('protect_post_write'),('protect_notification_request_insert'),
+  ('admin_alert_on_insert'),('set_updated_at'),
   ('cafe_my_visit'),('cafe_room_state'),('cafe_set_room'),('cafe_set_visibility'),('cafe_leave'),('cafe_refresh_location'),
   ('cafe_nearby'),('cafe_join'),('cafe_save_photo'),('cafe_save_seating_payload'),('cafe_social_state'),('cafe_set_instagram'),
   ('cafe_request_instagram'),('cafe_decide_instagram'),('cafe_revoke_instagram'),('cafe_instagram_link')
@@ -112,6 +114,39 @@ select * from (
     and ((p.cmd = 'INSERT' and coalesce(p.with_check, 'x') in ('true','(true)'))
       or (p.cmd in ('UPDATE','DELETE') and coalesce(p.qual, 'x') in ('true','(true)'))
       or (p.cmd = 'ALL' and coalesce(p.qual, p.with_check, 'x') in ('true','(true)')))
+
+  union all
+  select 10, 'korumalı tetikleyici: ' || x.tbl || ' -> ' || x.fn,
+         case when exists (select 1 from pg_trigger t join pg_proc p on p.oid = t.tgfoid
+                           where t.tgrelid = to_regclass('public.' || x.tbl) and not t.tgisinternal and p.proname = x.fn) then 'OK' else 'FAIL' end,
+         'yoksa istemci fiyat/durum/onay alanlarını kendisi yazabilir'
+  from (values ('user_profiles','protect_user_profile_cols'),('businesses','protect_business_cols'),('ads','protect_ad_insert'),
+               ('business_posts','protect_post_write'),('notification_requests','protect_notification_request_insert')) x(tbl, fn)
+  where to_regclass('public.' || x.tbl) is not null
+
+  union all
+  select 10, 'hassas sütun yetkisi: user_profiles.' || c.col || ' (authenticated/anon UPDATE)',
+         case when has_column_privilege('authenticated', 'public.user_profiles', c.col, 'UPDATE')
+                or has_column_privilege('anon', 'public.user_profiles', c.col, 'UPDATE') then 'FAIL' else 'OK' end,
+         'kullanıcı kendi rolünü/durumunu/e-postasını değiştirememeli'
+  from (values ('role'),('status'),('restricted_until'),('email'),('id')) c(col)
+  where to_regclass('public.user_profiles') is not null
+
+  union all
+  select 10, 'anon tablo yetkisi: ' || st.name,
+         case when not has_table_privilege('anon', 'public.' || st.name, 'SELECT,INSERT,UPDATE,DELETE') then 'OK'
+              when exists (select 1 from pg_policies p where p.schemaname='public' and p.tablename=st.name and (p.roles && array['anon','public']::name[])) then 'FAIL'
+              else 'WARN' end,
+         'anon tablo yetkisi var; politika yoksa RLS engeller (Supabase varsayılan yetkisi) ama yetkiyi geri almak daha güvenli: revoke all on public.<tablo> from anon'
+  from secret_tables st
+  where to_regclass('public.' || st.name) is not null
+
+  union all
+  select 10, 'başka işletme verisi: businesses UPDATE politikası sahiplik kontrolü',
+         case when exists (select 1 from pg_policies p where p.schemaname='public' and p.tablename='businesses' and p.cmd in ('UPDATE','ALL')
+                           and coalesce(p.qual,'') ilike '%owner_id%') then 'OK' else 'WARN' end,
+         'işletme yalnızca kendi satırını güncellemeli (owner_id = auth.uid())'
+  where to_regclass('public.businesses') is not null
 
   union all
   select 11, 'yönetici hesabı',
