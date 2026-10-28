@@ -133,7 +133,7 @@ export default function AuthScreen() {
           {account === 'business' ? 'İşletme hesabınla devam et' : 'Topluluğa katıl, keşfet ve kazan'}
         </Text>
 
-        {account === 'business' ? <View style={styles.approvalNote}><MaterialCommunityIcons name="shield-clock-outline" size={20} color={colors.primary} /><Text style={styles.approvalText}>İşletme hesabınızla giriş yapabilirsiniz. İşletme paneli, kayıt sonrası yönetici giriş onayıyla açılır.</Text></View> : null}
+        {account === 'business' ? <View style={styles.approvalNote}><MaterialCommunityIcons name="shield-lock-outline" size={20} color={colors.primary} /><Text style={styles.approvalText}>İşletme hesabınızla giriş yapabilirsiniz. İşletme paneli, kayıt sonrası yönetici giriş onayıyla açılır.</Text></View> : null}
 
         <View style={styles.segment}>
           <SegmentBtn label="Kullanıcı" active={account === 'user'} onPress={() => { setAccount('user'); resetFlow(); }} />

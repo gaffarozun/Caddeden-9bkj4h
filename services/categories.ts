@@ -8,6 +8,7 @@ export type MainCategoryId = 'yeme_icme' | 'guzellik_bakim';
 export interface MainCategory {
   id: MainCategoryId;
   label: string;
+  short: string;
   icon: string;
   color: string;
 }
@@ -25,8 +26,8 @@ export interface SubCategory {
 }
 
 export const MAIN_CATEGORIES: MainCategory[] = [
-  { id: 'yeme_icme', label: 'Yeme-İçme ve Eğlence', icon: 'silverware-fork-knife', color: '#FF5436' },
-  { id: 'guzellik_bakim', label: 'Güzellik ve Bakım', icon: 'scissors-cutting', color: '#B5559E' },
+  { id: 'yeme_icme', label: 'Yeme-İçme ve Eğlence', short: 'Yeme-İçme', icon: 'silverware-fork-knife', color: '#FF5436' },
+  { id: 'guzellik_bakim', label: 'Güzellik ve Bakım', short: 'Güzellik', icon: 'scissors-cutting', color: '#B5559E' },
 ];
 
 export const SUB_CATEGORIES: SubCategory[] = [

@@ -182,7 +182,7 @@ function BusinessManage() {
   if (!business) {
     return (
       <View style={styles.guard}>
-        <MaterialCommunityIcons name="storefront-remove-outline" size={48} color={colors.textFaint} />
+        <MaterialCommunityIcons name="store-remove-outline" size={48} color={colors.textFaint} />
         <Text style={styles.guardText}>Bu işletme bulunamadı veya sana ait değil.</Text>
         <Button label="Geri Dön" icon="arrow-left" variant="secondary" onPress={() => router.back()} />
       </View>

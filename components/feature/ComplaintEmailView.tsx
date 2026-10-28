@@ -20,7 +20,7 @@ export const ComplaintEmailView=memo(function ComplaintEmailView({adminMode=fals
   </>}
   <FeedbackError message={m.error}/>
   {m.notice?<View style={s.notice} accessibilityLiveRegion="polite"><MaterialCommunityIcons name="information-outline" size={22} color={c.primary}/><Text style={s.text}>{m.notice}</Text></View>:null}
-  <FeedbackButton label={adminMode?'E-posta adresini kaydet':'E-posta taslağını aç'} icon={adminMode?'content-save-outline':'email-arrow-right-outline'} onPress={()=>{void m.submit();}} busy={m.busy} disabled={m.loading||(!adminMode&&!m.email)}/>
+  <FeedbackButton label={adminMode?'E-posta adresini kaydet':'E-posta taslağını aç'} icon={adminMode?'content-save-outline':'email-send-outline'} onPress={()=>{void m.submit();}} busy={m.busy} disabled={m.loading||(!adminMode&&!m.email)}/>
   {m.error || (!adminMode&&!m.email&&!m.loading)?<FeedbackButton secondary label="Adres bilgisini yeniden dene" onPress={()=>{void m.retry();}} disabled={m.busy||m.loading}/>:null}
   {!adminMode?<Text style={s.subtle}>Otomatik e-posta gönderilmez. E-posta uygulamasındaki Gönder düğmesine basmanız gerekir; gönderim sonucu bu uygulamadan doğrulanamaz.</Text>:null}
  </ScrollView></KeyboardAvoidingView></SafeAreaView>;

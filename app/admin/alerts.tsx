@@ -59,7 +59,7 @@ export default function AdminAlerts() {
   };
 
   const alertIcon = (type: string) => {
-    if (type === 'business_account_approval') return 'shield-clock-outline';
+    if (type === 'business_account_approval') return 'shield-lock-outline';
     if (type === 'ad') return 'bullhorn-outline';
     if (type === 'content') return 'image-multiple-outline';
     if (type === 'campaign') return 'sale';

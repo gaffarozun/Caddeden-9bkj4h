@@ -82,7 +82,7 @@ export const OrderReportView = memo(function OrderReportView({ adminMode = false
           {m.error ? <View style={styles.dateBlock}><FeedbackError message={m.error} /><FeedbackButton label="Raporu yeniden yükle" secondary onPress={m.refresh} busy={m.refreshing} /></View> : null}
           {m.loading ? <ActivityIndicator color={colors.primary} accessibilityLabel="Sipariş raporu yükleniyor" /> : null}
         </View>}
-        ListEmptyComponent={!m.loading && !m.error ? <View style={styles.empty}><MaterialCommunityIcons name="receipt-text-outline" size={spacing.xxxl} color={colors.textFaint} /><Text style={styles.body}>Seçili filtrelere uyan sipariş yok.</Text></View> : null}
+        ListEmptyComponent={!m.loading && !m.error ? <View style={styles.empty}><MaterialCommunityIcons name="script-text-outline" size={spacing.xxxl} color={colors.textFaint} /><Text style={styles.body}>Seçili filtrelere uyan sipariş yok.</Text></View> : null}
         ListFooterComponent={m.report && m.report.totalRows > 0 ? <View style={styles.footer}>
           <Text style={styles.subtle}>Sayfa {m.filters.page + 1} / {pageCount} · {m.report.totalRows} {m.filters.view === 'daily' ? 'gün' : 'kayıt'}</Text>
           <View style={styles.pagination}><View style={styles.pageButton}><FeedbackButton label="Önceki" secondary disabled={m.loading || m.filters.page === 0} onPress={() => m.selectPage(m.filters.page - 1)} /></View><View style={styles.pageButton}><FeedbackButton label="Sonraki" secondary disabled={m.loading || m.filters.page + 1 >= pageCount} onPress={() => m.selectPage(m.filters.page + 1)} /></View></View>

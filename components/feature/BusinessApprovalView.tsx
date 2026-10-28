@@ -19,7 +19,7 @@ export function BusinessApprovalView({ showBrand = true }: BusinessApprovalViewP
         refreshControl={<RefreshControl refreshing={m.refreshing} onRefresh={m.refresh} tintColor={colors.primary} />}>
         {showBrand ? <View style={styles.brandRow}><MaterialCommunityIcons name="storefront-outline" size={24} color={colors.primary} /><Text style={styles.brand}>Caddeden</Text><View style={styles.badge}><Text style={styles.badgeText}>İşletme hesabı</Text></View></View> : null}
         <View style={styles.hero}>
-          <View style={styles.symbol}><MaterialCommunityIcons name="shield-clock-outline" size={44} color={colors.primary} /></View>
+          <View style={styles.symbol}><MaterialCommunityIcons name="shield-lock-outline" size={44} color={colors.primary} /></View>
           <View style={styles.statusRow}><View style={styles.statusDot} /><Text style={styles.statusText}>{m.approved ? 'Giriş onayınız mevcut' : 'Yönetici incelemesinde'}</Text></View>
           <Text accessibilityRole="header" style={styles.title}>{m.approved ? 'Hesap erişimi bekletiliyor' : 'Yönetici tarafından onay bekleniyor'}</Text>
           <Text style={styles.body}>{m.approved ? 'Giriş onayınız mevcut ancak hesabınız şu anda aktif değil. Yönetici kontrolünden sonra durumu yeniden kontrol edebilirsiniz.' : 'Kaydınız alındı. İşletme panelinizi kullanabilmeniz için yöneticinin hesabınıza giriş onayı vermesi gerekiyor. Onaylandıktan sonra paneliniz otomatik açılır.'}</Text>
