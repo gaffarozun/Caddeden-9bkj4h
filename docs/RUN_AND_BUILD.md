@@ -52,3 +52,6 @@ Derin bağlantı şeması `onspaceapp://` (şifre sıfırlama yönlendirmesi) ko
 ## 5) Elle test listesi (gerçek Supabase gerekir)
 Kayıt (e-posta kodu) → giriş → oturumun uygulama yeniden açılınca korunması · kullanıcı hesabıyla işletme girişinin reddi · işletme profili/fotoğraf yükleme ·
 menü ürünü · müşteri siparişi → işletme onay/yolda/teslim · yıldız/değerlendirme · yönetici girişi ve işletme onayı · iki farklı işletmenin birbirinin siparişini görememesi.
+
+## 6) Yenileme
+Keşfet, Gönderiler ve Profil sayfalarında başlıkta yenile düğmesi (↻) vardır; web'de ekranı aşağı çekme çalışmadığı için düğme asıl yoldur, telefonda aşağı çekme de çalışır. Profil yenilemesi hesap/rol bilgisini ve sipariş, rezervasyon ve işletme listelerini yeniden okur.

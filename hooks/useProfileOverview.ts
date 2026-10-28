@@ -5,7 +5,8 @@ import { loadProfileOverview, OwnedBusiness } from '@/services/profileOverviewSe
 import { OrderRow, ReservationRow } from '@/services/businessRequestService';
 
 export function useProfileOverview() {
-  const { authUser } = useAuth();
+  const { authUser, refreshProfile } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
   const [owned, setOwned] = useState<OwnedBusiness[]>([]);
   const [myOrders, setMyOrders] = useState<OrderRow[]>([]);
   const [myReservations, setMyReservations] = useState<ReservationRow[]>([]);
@@ -28,5 +29,19 @@ export function useProfileOverview() {
     }
     return () => { active = false; };
   }, [authUser?.id, authUser?.role]));
-  return { owned, myOrders, myReservations, error };
+  // Elle yenileme: hesap/rol bilgisini ve sipariş, rezervasyon, işletme listelerini yeniden okur.
+  const refresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true); setError('');
+    try {
+      await refreshProfile();
+      if (authUser) {
+        const data = await loadProfileOverview(authUser.id, authUser.role);
+        setOwned(data.owned); setMyOrders(data.orders); setMyReservations(data.reservations);
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Profil bilgileri yenilenemedi.');
+    } finally { setRefreshing(false); }
+  }, [authUser?.id, authUser?.role, refreshProfile, refreshing]);
+  return { owned, myOrders, myReservations, error, refresh, refreshing };
 }

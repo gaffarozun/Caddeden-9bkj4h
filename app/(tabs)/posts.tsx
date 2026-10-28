@@ -8,6 +8,7 @@ import { usePostsFeed } from '@/hooks/usePostsFeed';
 import { useTabScrollToTop } from '@/hooks/useTabScrollToTop';
 import type { Post } from '@/services/types';
 import { FeedbackButton, FeedbackError } from '@/components/feature/FeedbackControls';
+import { RefreshButton } from '@/components/feature/RefreshButton';
 import { useTheme } from '@/hooks/useTheme';
 import { fontSize, fontWeight, spacing, ThemeColors } from '@/constants/theme';
 
@@ -19,7 +20,7 @@ export default function PostsScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScreenHeader title="Gönderiler" />
+      <ScreenHeader title="Gönderiler" right={<RefreshButton onPress={refresh} refreshing={refreshing} label="Gönderileri yenile" />} />
       <View style={styles.categories}><MainCategoryTabs compact selected={main} onSelect={setMain} /></View>
       <View style={styles.categorySummary}>
         <View style={styles.categoryText}><Text style={styles.categoryTitle}>{categoryLabel}</Text><Text style={styles.count}>{posts.length} gönderi</Text></View>

@@ -13,6 +13,7 @@ import { MenuSearchCard } from '@/components/feature/MenuSearchCard';
 import { DiscoveryResultRow } from '@/services/discoveryResultsService';
 import { CampaignBanner } from '@/components/feature/CampaignBanner';
 import { NotificationBell } from '@/components/feature/NotificationBell';
+import { RefreshButton } from '@/components/feature/RefreshButton';
 import { fontSize, fontWeight, radius, spacing, ThemeColors } from '@/constants/theme';
 
 export default function DiscoverScreen() {
@@ -52,7 +53,7 @@ export default function DiscoverScreen() {
         <View style={styles.brandBlock}>
           <Text style={styles.brand}>Caddeden</Text>
         </View>
-        <NotificationBell />
+        <View style={styles.headerActions}><RefreshButton onPress={refresh} refreshing={refreshing} /><NotificationBell /></View>
       </View>
 
       <View style={styles.searchWrap}>
@@ -142,6 +143,7 @@ const createStyles = (colors: ThemeColors) =>
     borderTopColor: colors.brand,
     borderBottomColor: colors.brand,
   },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   brandBlock: { flex: 1, paddingRight: spacing.sm },
   feedError: { gap: spacing.sm, marginBottom: spacing.lg },
   brand: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.primaryDark, letterSpacing: -0.5 },
