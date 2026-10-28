@@ -14,6 +14,13 @@ const clean = (s) => String(s).replace(/[\r\n]+/g, ' ').replace(/eyJ[\w-]{20,}\.
   await p.waitForTimeout(1300);
   const v = await p.evaluate(() => { const e = document.querySelector('video'); return e ? { var: true, t: +e.currentTime.toFixed(2), paused: e.paused, ready: e.readyState, w: e.videoWidth, h: e.videoHeight, err: e.error ? e.error.code : null } : { var: false }; }).catch(() => ({ var: 'hata' }));
   console.log(`::notice title=smoke intro video::${JSON.stringify(v)}`);
+  const d = await p.evaluate(async () => {
+    const e = document.querySelector('video'); const src = e && (e.currentSrc || e.src);
+    const out = { src: src ? src.replace(location.origin, '') : null, h264: document.createElement('video').canPlayType('video/mp4; codecs="avc1.42E01E"') || 'hayir' };
+    if (src) { try { const r = await fetch(src); out.status = r.status; out.type = r.headers.get('content-type'); out.bytes = (await r.arrayBuffer()).byteLength; } catch (x) { out.fetchErr = String(x).slice(0, 80); } }
+    return out;
+  }).catch(() => ({}));
+  console.log(`::notice title=smoke intro dosya::${JSON.stringify(d)}`);
   await p.screenshot({ path: 'smoke-intro.png' });
   await p.waitForTimeout(5000);
   console.log(`::notice title=smoke http::${resp ? resp.status() : 'no response'} ${url}`);
