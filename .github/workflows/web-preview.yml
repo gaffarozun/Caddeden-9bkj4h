@@ -32,8 +32,23 @@ jobs:
       - name: Set baseUrl for Pages
         run: |
           node -e "const f='app.json';const j=require('./'+f);j.expo.experiments={...(j.expo.experiments||{}),baseUrl:'/${{ github.event.repository.name }}'};require('fs').writeFileSync(f,JSON.stringify(j,null,2))"
-      # Bilerek Supabase ortam değişkeni verilmez: önizleme "Supabase yapılandırması gerekli" ekranını gösterir, hiçbir anahtar yayınlanmaz.
+      # service_role anahtarı yanlışlıkla konmuşsa derlemeyi durdurur (anahtar loglara yazılmaz).
+      - name: Guard against service_role key
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          node -e "
+          const u=process.env.EXPO_PUBLIC_SUPABASE_URL||'',k=process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY||'';
+          console.log('URL secret var mi:',u.startsWith('https://'),'| anon secret var mi:',k.length>20);
+          try{const r=JSON.parse(Buffer.from(k.split('.')[1],'base64url').toString()).role;console.log('anahtar rolü:',r);if(r==='service_role'){console.error('service_role anahtarı istemciye konamaz');process.exit(1)}}catch(e){console.log('JWT değil (publishable anahtar olabilir)')}
+          if(k.startsWith('sb_secret_')){console.error('secret anahtar istemciye konamaz');process.exit(1)}
+          "
+      # Secret'lar yalnızca bu adımda Expo'ya aktarılır; yoksa önizleme kurulum ekranını gösterir.
       - run: npx expo export --platform web
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
       - run: touch dist/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
