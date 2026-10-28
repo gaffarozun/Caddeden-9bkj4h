@@ -31,4 +31,5 @@ migrations/20261024_all_business_participation.sql
 migrations/20261025_venue_live_inbox.sql
 migrations/20261025_venue_refresh_serialization.sql
 migrations/20261026_venue_radius_50m.sql
+migrations/20261027_function_privilege_hardening.sql
 verify/readiness_check.sql

@@ -37,6 +37,76 @@ expected_functions(name) as (values
   ('cafe_nearby'),('cafe_join'),('cafe_save_photo'),('cafe_save_seating_payload'),('cafe_social_state'),('cafe_set_instagram'),
   ('cafe_request_instagram'),('cafe_decide_instagram'),('cafe_revoke_instagram'),('cafe_instagram_link')
 ),
+made_by(name, file) as (values
+  ('account_active','20261020_account_role_separation.sql'),
+  ('account_admin','20261020_account_role_separation.sql'),
+  ('account_business_access','20261020_business_account_approval.sql'),
+  ('account_can_manage','20261020_account_role_separation.sql'),
+  ('account_customer','20261020_account_role_separation.sql'),
+  ('account_media_owner','20261020_account_role_separation.sql'),
+  ('account_role','20261020_account_role_separation.sql'),
+  ('account_type_decisions','20261020_account_type_decisions.sql'),
+  ('admin_campaign_decision','20261020_paid_campaign_ticker.sql'),
+  ('admin_order_report','20261023_order_reports.sql'),
+  ('admin_set_account_type','20261020_account_role_separation.sql'),
+  ('admin_set_business_account_approval','20261020_business_account_approval.sql'),
+  ('business_account_approvals','20261020_business_account_approval.sql'),
+  ('business_account_state','20261020_business_account_approval.sql'),
+  ('business_is_open','20261025_venue_live_inbox.sql'),
+  ('business_order_report','20261023_order_reports.sql'),
+  ('business_star_ratings','20261020_independent_stars.sql'),
+  ('business_star_state','20261020_independent_stars.sql'),
+  ('business_star_stats','20261020_independent_stars.sql'),
+  ('cafe-profile-photos','20261023_cafe_photo_privacy.sql'),
+  ('cafe_decide_instagram','20261024_cafe_seating_social.sql'),
+  ('cafe_instagram_link','20261024_cafe_seating_social.sql'),
+  ('cafe_instagram_requests','20261024_cafe_seating_social.sql'),
+  ('cafe_join','20261023_cafe_photo_privacy.sql'),
+  ('cafe_leave','20261023_cafe_photo_privacy.sql'),
+  ('cafe_my_visit','20261023_cafe_photo_privacy.sql'),
+  ('cafe_nearby','20261024_cafe_arrival_prompt.sql'),
+  ('cafe_profile_photos','20261023_cafe_photo_privacy.sql'),
+  ('cafe_refresh_location','20261025_venue_live_inbox.sql'),
+  ('cafe_request_instagram','20261024_cafe_seating_social.sql'),
+  ('cafe_revoke_instagram','20261025_venue_live_inbox.sql'),
+  ('cafe_room_state','20261023_cafe_photo_privacy.sql'),
+  ('cafe_rooms','20261023_cafe_photo_privacy.sql'),
+  ('cafe_save_photo','20261023_cafe_photo_privacy.sql'),
+  ('cafe_save_seating_payload','20261024_venue_presence_40m_privacy.sql'),
+  ('cafe_set_instagram','20261024_cafe_seating_social.sql'),
+  ('cafe_set_room','20261023_cafe_photo_privacy.sql'),
+  ('cafe_set_visibility','20261023_cafe_photo_privacy.sql'),
+  ('cafe_social_profiles','20261024_cafe_seating_social.sql'),
+  ('cafe_social_state','20261024_cafe_seating_social.sql'),
+  ('cafe_tables','20261024_cafe_seating_social.sql'),
+  ('cafe_visits','20261023_cafe_photo_privacy.sql'),
+  ('creative_is_referenced','20261023_content_order_messages.sql'),
+  ('customer_inbox','20261025_venue_live_inbox.sql'),
+  ('customer_inbox_items','20261025_venue_live_inbox.sql'),
+  ('customer_inbox_read','20261025_venue_live_inbox.sql'),
+  ('customer_inbox_reads','20261025_venue_live_inbox.sql'),
+  ('experience_feature_settings','20261020_independent_stars.sql'),
+  ('media_cleanup_queue','20261023_content_order_messages.sql'),
+  ('moderate_university_message','20261020_university_messages.sql'),
+  ('order_messages','20261023_content_order_messages.sql'),
+  ('order_rating_receipts','20261023_next_open_order_ratings.sql'),
+  ('pending_order_ratings','20261023_next_open_order_ratings.sql'),
+  ('public_cadde_tv_channels','20261021_cadde_tv.sql'),
+  ('public_complaint_email','20261023_content_order_messages.sql'),
+  ('public_menu_search','20261022_menu_product_search.sql'),
+  ('public_paid_campaigns','20261020_paid_campaign_ticker.sql'),
+  ('set_experience_feature','20261020_independent_stars.sql'),
+  ('set_venue_profile_preference','20261024_venue_presence_40m_privacy.sql'),
+  ('submit_business_star','20261020_independent_stars.sql'),
+  ('submit_order_business_rating','20261023_next_open_order_ratings.sql'),
+  ('submit_paid_campaign','20261020_paid_campaign_ticker.sql'),
+  ('submit_university_message','20261020_university_messages.sql'),
+  ('university_messages','20261020_university_messages.sql'),
+  ('university_public_messages','20261020_university_messages.sql'),
+  ('venue_profile_preference','20261024_venue_presence_40m_privacy.sql'),
+  ('venue_profile_preferences','20261024_venue_presence_40m_privacy.sql'),
+  ('withdraw_university_message','20261022_university_withdrawal.sql')
+),
 expected_buckets(id, must_be_public) as (values
   ('business-media', true), ('feedback-evidence', false), ('cafe-profile-photos', false)
 ),
@@ -45,7 +115,7 @@ select * from (
 
   select 1 as s, 'tablo: ' || t.name as kontrol,
          case when c.oid is null then 'FAIL' else 'OK' end as durum,
-         case when c.oid is null then 'public.' || t.name || ' yok' else '' end as ayrinti
+         case when c.oid is null then 'public.' || t.name || ' yok' || coalesce(' -> migrations/' || (select file from made_by where name = t.name) || ' çalıştırın', '') else '' end as ayrinti
   from expected_tables t
   left join pg_class c on c.relname = t.name and c.relkind = 'r' and c.relnamespace = 'public'::regnamespace
 
@@ -58,7 +128,8 @@ select * from (
   union all
   select 3, 'fonksiyon: ' || f.name,
          case when exists (select 1 from pg_proc p where p.proname = f.name and p.pronamespace = 'public'::regnamespace) then 'OK' else 'FAIL' end,
-         ''
+         case when exists (select 1 from pg_proc p where p.proname = f.name and p.pronamespace = 'public'::regnamespace) then ''
+              else coalesce('migrations/' || (select file from made_by where name = f.name) || ' çalıştırın', '') end
   from expected_functions f
 
   union all
@@ -67,14 +138,14 @@ select * from (
   from pg_proc p
   where p.pronamespace = 'public'::regnamespace and p.prosecdef
     and p.proname in (select name from expected_functions)
-    and p.proname not in ('public_paid_campaigns','public_cadde_tv_channels','public_complaint_email','public_menu_search','university_public_messages')
+    and p.proname not in ('public_paid_campaigns','public_cadde_tv_channels','public_complaint_email','public_menu_search','university_public_messages','feedback_read','feedback_ratings','business_star_state','business_star_stats','experiences_enabled','cafe_room_state')
     and has_function_privilege('anon', p.oid, 'EXECUTE')
 
   union all
   select 5, 'bucket: ' || b.id,
          case when sb.id is null then 'FAIL'
               when sb.public is distinct from b.must_be_public then 'FAIL' else 'OK' end,
-         case when sb.id is null then 'bucket yok'
+         case when sb.id is null then 'bucket yok' || coalesce(' -> migrations/' || (select file from made_by where name = b.id) || ' çalıştırın', '')
               when sb.public is distinct from b.must_be_public
                 then 'public=' || sb.public || ' ama beklenen ' || b.must_be_public else '' end
   from expected_buckets b left join storage.buckets sb on sb.id = b.id
@@ -178,6 +249,20 @@ select * from (
                 or has_column_privilege('authenticated', 'public.orders', 'items', 'UPDATE') then 'FAIL' else 'OK' end,
          'toplam ve ürünler yalnızca INSERT sırasında sunucu tetikleyicisiyle belirlenir'
   where to_regclass('public.orders') is not null
+
+  union all
+  select 10, 'istemci EXECUTE yetkisi olmamalı (tetikleyici): ' || p.proname,
+         case when has_function_privilege('anon', p.oid, 'EXECUTE') or has_function_privilege('authenticated', p.oid, 'EXECUTE') then 'FAIL' else 'OK' end,
+         'migrations/20261027_function_privilege_hardening.sql çalıştırın'
+  from pg_proc p
+  where p.pronamespace = 'public'::regnamespace and p.prokind = 'f' and p.prorettype = 'trigger'::regtype
+    and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+
+  union all
+  select 10, 'istemci EXECUTE yetkisi olmamalı: account_type_pending(uuid)',
+         case when has_function_privilege('anon', p.oid, 'EXECUTE') or has_function_privilege('authenticated', p.oid, 'EXECUTE') then 'FAIL' else 'OK' end,
+         'başka kullanıcıların hesap türü kararı durumu sızdırılabilir; migrations/20261027_function_privilege_hardening.sql çalıştırın'
+  from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'account_type_pending'
 
   union all
   select 11, 'yönetici hesabı',

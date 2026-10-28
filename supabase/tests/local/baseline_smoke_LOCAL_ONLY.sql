@@ -243,6 +243,18 @@ select pg_temp.val('tek yönetici (ikinci admin satırı tekil indeksle engellen
 select pg_temp.act(pg_temp.id(1));
 select pg_temp.allowed('doğrulanmış admin kendi rolünü korur',$q$select 1 from public.user_profiles where id=pg_temp.id(1) and role='admin'$q$);
 
+-- 3c) Fonksiyon yetkisi sertleştirme (20261027) -----------------------------------------------------------------
+select pg_temp.act(pg_temp.id(3));
+select pg_temp.denied('müşteri account_type_pending(başkası) çağıramaz',$q$select public.account_type_pending(pg_temp.id(4))$q$);
+select pg_temp.denied('müşteri tetikleyici fonksiyonunu doğrudan çağıramaz',$q$select public.protect_business_cols()$q$);
+select pg_temp.allowed('müşteri account_role() çağırabilir (RLS için)',$q$select public.account_role()$q$);
+select pg_temp.act(null,'anon');
+select pg_temp.denied('anon account_admin() çağıramaz',$q$select public.account_admin()$q$);
+select pg_temp.denied('anon account_type_pending çağıramaz',$q$select public.account_type_pending(pg_temp.id(4))$q$);
+select pg_temp.allowed('anon public_menu_search çağırabilir',$q$select public.public_menu_search('x',null,null,null,0,5)$q$);
+select pg_temp.allowed('anon experiences_enabled çağırabilir',$q$select public.experiences_enabled()$q$);
+select pg_temp.su();
+
 -- 4) Profil gizliliği ve yetki yükseltme ---------------------------------------------------------------------
 select pg_temp.act(pg_temp.id(2));
 select pg_temp.val('A yalnızca kendi profilini görür',$q$select count(*)::text from public.user_profiles$q$,'1');

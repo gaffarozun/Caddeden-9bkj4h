@@ -44,7 +44,8 @@ aynı `20261020` önekini taşıyan dosyalar sürüm çakışması yaratır. Mak
 | 27 | `20261025_venue_live_inbox.sql` |
 | 28 | `20261025_venue_refresh_serialization.sql` |
 | 29 | `20261026_venue_radius_50m.sql` |
-| 30 | `verify/readiness_check.sql` ← sonuçta **FAIL satırı kalmamalı** |
+| 30 | `20261027_function_privilege_hardening.sql` ← **yeni**: tetikleyici/`account_type_pending`/gizli tablo yetkilerini daraltır, tekrar çalıştırılabilir |
+| 31 | `verify/readiness_check.sql` ← sonuçta **FAIL satırı kalmamalı** |
 
 Notlar:
 - Baseline dosyası başında bir koruma bloğu içerir: `account_admin()`, `business_star_ratings` veya `cafe_rooms` zaten varsa
@@ -78,6 +79,15 @@ Hedefte sırayla (hepsi salt okunur ya da tekrar çalıştırılabilir):
 | Sonraki migration'lar | Başarıyla tamamlananları tekrar çalıştırmayın; yarım kalan dosya tek işlemdi, hata verdiyse hiçbir şey kalmadı, düzeltip aynı dosyayı çalıştırın. Her dosyayı çalıştırmadan önce `apply_order.txt` sırasını izleyin. |
 
 Önlem: depoda `.gitattributes` SQL dosyalarını LF olarak tutar; GitHub'dan "Raw" ile kopyalayın veya `git clone` kullanın, editörde CRLF'ye çevirmeyin.
+
+### 1c) `readiness_check.sql` 63 FAIL gösteriyorsa
+
+Baseline ve `20261002` uygulandıktan sonra, kalan 27 migration henüz uygulanmamışsa FAIL beklenen sonuçtur: yerelde yalnızca bu iki dosyayla
+`readiness_check.sql` 69 FAIL verir ve **hepsi** ilgili migration'ın oluşturduğu tablo/fonksiyon/kovadır (17 tablo, 50 fonksiyon, 1 kova, 1 kova politikası).
+Şema tasarımında eksik yoktur; eksik olan, sıradaki migration'ların çalıştırılmasıdır. Güncel `readiness_check.sql`, eksik her nesne için
+"-> migrations/<dosya> çalıştırın" ipucunu satır ayrıntısında yazar. Dosyaları tablodaki sırayla (3. satırdan 30. satıra) tek tek uygulayın,
+her dosyadan sonra `readiness_check.sql` çalıştırıp FAIL sayısının azaldığını izleyin. Hedef: FAIL = 0 (kalan WARN: henüz yönetici hesabı yok).
+Sahte tablo, boş fonksiyon veya gevşek politika eklenmedi; yerel tam zincirde sonuç 0 FAIL, 1 WARN (yönetici yok).
 
 ## 2) Baseline ne oluşturur (kodun gerektirdiği kadar)
 
