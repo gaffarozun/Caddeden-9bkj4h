@@ -60,6 +60,20 @@ begin
  exception when others then perform pg_temp.fail(label,sqlerrm); end;
 end; $$;
 
+-- DML çalıştırır, sonucu sorgular, sonra alt işlemi geri alır (kalıcı değişiklik bırakmaz)
+create function pg_temp.probe(label text, dml text, chk text, expected text) returns void language plpgsql as $$
+declare v text;
+begin
+ begin
+  execute dml; execute chk into v;
+  raise exception '__probe__%',coalesce(v,'NULL');
+ exception when others then
+  if sqlerrm like '__probe__%' then v:=substr(sqlerrm,10);
+   if v is not distinct from expected then perform pg_temp.pass(label); else perform pg_temp.fail(label,'değer='||v||' beklenen='||expected); end if;
+  else perform pg_temp.fail(label,sqlerrm); end if;
+ end;
+end; $$;
+
 -- Sabit kimlikler ---------------------------------------------------------------------------------------------
 create function pg_temp.id(n int) returns uuid language sql immutable as $$ select ('00000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid $$;
 -- 1 admin, 2 müşteri A, 3 müşteri B, 4 işletme sahibi X, 5 işletme sahibi Y, 6 doğrulanmamış kullanıcı, 7 onaysız işletme hesabı Z
@@ -86,7 +100,7 @@ select pg_temp.allowed('admin işletme hesabı Y onaylar',$q$select public.admin
 select pg_temp.act(pg_temp.id(4));
 select pg_temp.allowed('X kendi işletmesini ekler (onay/yayın/puan alanlarını kendi belirlemeye çalışsa da)',
  $q$insert into public.businesses(id,owner_id,category,main_category,name,description,phone,address,hours,approval_status,is_published,featured,rating,review_count)
- values(pg_temp.id(11),pg_temp.id(4),'restoran','yeme_icme','X Restoran','d','555','adres','09:00-23:00','approved',true,true,5,99)$q$);
+ values(pg_temp.id(11),pg_temp.id(4),'restoran','yeme_icme','X Restoran','d','5551234567','adres','09:00-23:00','approved',true,true,5,99)$q$);
 select pg_temp.act(pg_temp.id(5));
 select pg_temp.allowed('Y kendi işletmesini ekler',
  $q$insert into public.businesses(id,owner_id,category,main_category,name,phone,address,hours) values(pg_temp.id(12),pg_temp.id(5),'kafe','yeme_icme','Y Kafe','556','adres','08:00-20:00')$q$);
@@ -110,7 +124,7 @@ select pg_temp.act(null,'anon');
 select pg_temp.val('anon onaylı işletmeleri görür',$q$select count(*)::text from public.businesses$q$,'2');
 select pg_temp.act(pg_temp.id(5));
 select pg_temp.rows('Y, X işletmesini güncelleyemez',$q$update public.businesses set name='ele geçirildi' where id=pg_temp.id(11)$q$,0);
-select pg_temp.rows('Y, X işletmesini silemez',$q$delete from public.businesses where id=pg_temp.id(11)$q$,0);
+select pg_temp.denied('Y, X işletmesini silemez (DELETE yetkisi yok)',$q$delete from public.businesses where id=pg_temp.id(11)$q$);
 select pg_temp.act(pg_temp.id(4));
 select pg_temp.allowed('X işletmeyi açık/siparişe açık yapar',$q$update public.businesses set is_open=true,status_mode='manual',allow_order=true,lat=41.0,lng=29.0 where id=pg_temp.id(11)$q$);
 select pg_temp.allowed('X menü ürünü ekler',$q$insert into public.menu_items(id,business_id,name,price,group_name) values(pg_temp.id(21),pg_temp.id(11),'Çorba',50,'Çorbalar')$q$);
@@ -125,22 +139,22 @@ select pg_temp.val('anon yayındaki işletmenin menüsünü görür',$q$select c
 select pg_temp.act(pg_temp.id(2));
 select pg_temp.allowed('müşteri A sipariş verir (istemci toplamı yanlış gönderse de)',
  $q$insert into public.orders(id,user_id,business_id,items,total,phone,address,lat,lng,customer_name)
- values(pg_temp.id(41),pg_temp.id(2),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'name','Çorba','price',50,'qty',2)),1,'555','adres',41.0,29.0,'Ayşe Y.')$q$);
+ values(pg_temp.id(41),pg_temp.id(2),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'name','Çorba','price',50,'qty',2)),1,'5551234567','adres',41.0,29.0,'Ayşe Y.')$q$);
 select pg_temp.denied('müşteri sahte fiyatla sipariş veremez',
  $q$insert into public.orders(user_id,business_id,items,total,phone,address,lat,lng)
- values(pg_temp.id(2),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'name','Çorba','price',1,'qty',1)),1,'555','adres',41.0,29.0)$q$);
+ values(pg_temp.id(2),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'name','Çorba','price',1,'qty',1)),1,'5551234567','adres',41.0,29.0)$q$);
 select pg_temp.denied('müşteri başkası adına sipariş veremez',
  $q$insert into public.orders(user_id,business_id,items,total,phone,address,lat,lng)
- values(pg_temp.id(3),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'name','Çorba','price',50,'qty',1)),50,'555','adres',41.0,29.0)$q$);
+ values(pg_temp.id(3),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'name','Çorba','price',50,'qty',1)),50,'5551234567','adres',41.0,29.0)$q$);
 select pg_temp.rows('müşteri sipariş durumunu değiştiremez',$q$update public.orders set status='delivered' where id=pg_temp.id(41)$q$,0);
 select pg_temp.act(pg_temp.id(6));
 select pg_temp.denied('e-postası doğrulanmamış kullanıcı sipariş veremez',
  $q$insert into public.orders(user_id,business_id,items,total,phone,address,lat,lng)
- values(pg_temp.id(6),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'name','Çorba','price',50,'qty',1)),50,'555','adres',41.0,29.0)$q$);
+ values(pg_temp.id(6),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'name','Çorba','price',50,'qty',1)),50,'5551234567','adres',41.0,29.0)$q$);
 select pg_temp.act(pg_temp.id(4));
 select pg_temp.denied('işletme sahibi X müşteri siparişi veremez',
  $q$insert into public.orders(user_id,business_id,items,total,phone,address,lat,lng)
- values(pg_temp.id(4),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'name','Çorba','price',50,'qty',1)),50,'555','adres',41.0,29.0)$q$);
+ values(pg_temp.id(4),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'name','Çorba','price',50,'qty',1)),50,'5551234567','adres',41.0,29.0)$q$);
 select pg_temp.val('X kendi işletmesinin siparişini görür',$q$select count(*)::text from public.orders$q$,'1');
 select pg_temp.val('sunucu toplamı hesapladı (2 x 50)',$q$select total::text from public.orders where id=pg_temp.id(41)$q$,'100.00');
 select pg_temp.denied('X sipariş toplamını değiştiremez (sütun yetkisi)',$q$update public.orders set total=1 where id=pg_temp.id(41)$q$);
@@ -158,12 +172,76 @@ select pg_temp.act(pg_temp.id(2));
 select pg_temp.val('A kendi sipariş mesajlarını görür (4 durum olayı)',$q$select count(*)::text from public.order_messages$q$,'4');
 select pg_temp.allowed('A teslim edilmiş siparişi değerlendirme bekleyen listede görür',$q$select public.pending_order_ratings(now()+interval '1 minute')$q$);
 select pg_temp.allowed('A rezervasyon yapar',$q$insert into public.reservations(id,user_id,business_id,type,date,time,guests,phone,customer_name)
- values(pg_temp.id(51),pg_temp.id(2),pg_temp.id(11),'reservation',current_date+1,'19:30',2,'555','Ayşe Y.')$q$);
-select pg_temp.denied('geçmiş tarihli rezervasyon reddedilir',$q$insert into public.reservations(user_id,business_id,type,date,time,guests,phone) values(pg_temp.id(2),pg_temp.id(11),'reservation',current_date-1,'19:30',2,'555')$q$);
+ values(pg_temp.id(51),pg_temp.id(2),pg_temp.id(11),'reservation',current_date+1,'19:30',2,'5551234567','Ayşe Y.')$q$);
+select pg_temp.denied('geçmiş tarihli rezervasyon reddedilir',$q$insert into public.reservations(user_id,business_id,type,date,time,guests,phone) values(pg_temp.id(2),pg_temp.id(11),'reservation',current_date-1,'19:30',2,'5551234567')$q$);
 select pg_temp.act(pg_temp.id(5));
 select pg_temp.rows('Y, X rezervasyonunu güncelleyemez',$q$update public.reservations set status='approved' where id=pg_temp.id(51)$q$,0);
 select pg_temp.act(pg_temp.id(4));
 select pg_temp.rows('X rezervasyonu onaylar',$q$update public.reservations set status='approved' where id=pg_temp.id(51)$q$,1);
+
+-- 3b) Güvenlik sertleştirmeleri: sipariş doğrulama, durum geçişleri, silme, yönetici -------------------------------
+select pg_temp.act(pg_temp.id(2));
+select pg_temp.allowed('A: mükerrer + sahte adlı/fiyatlı kalemlerle sipariş verir',
+ $q$insert into public.orders(id,user_id,business_id,items,total,phone,address,lat,lng,status)
+ values(pg_temp.id(42),pg_temp.id(2),pg_temp.id(11),
+ jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'name','HACKED','price',50,'qty',1,'extra','x'),
+                   jsonb_build_object('menu_item_id',pg_temp.id(21),'name','HACKED2','price',50,'qty',2)),
+ 0.01,'5551234567','adres',41.0,29.0,'delivered')$q$);
+select pg_temp.val('ad sunucudan gelir (HACKED yok sayılır)',$q$select items->0->>'name' from public.orders where id=pg_temp.id(42)$q$,'Çorba');
+select pg_temp.val('mükerrer kalemler birleşir (adet 3)',$q$select items->0->>'qty' from public.orders where id=pg_temp.id(42)$q$,'3');
+select pg_temp.val('ek alanlar atılır',$q$select (items->0 ? 'extra')::text from public.orders where id=pg_temp.id(42)$q$,'false');
+select pg_temp.val('toplam sunucuda hesaplanır (3 x 50)',$q$select total::text from public.orders where id=pg_temp.id(42)$q$,'150.00');
+select pg_temp.val('istemci status=delivered gönderse de pending',$q$select status from public.orders where id=pg_temp.id(42)$q$,'pending');
+select pg_temp.denied('adet 0',$q$insert into public.orders(user_id,business_id,items,total,phone,address,lat,lng) values(pg_temp.id(2),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'qty',0)),0,'5551234567','adres',41.0,29.0)$q$);
+select pg_temp.denied('adet 100',$q$insert into public.orders(user_id,business_id,items,total,phone,address,lat,lng) values(pg_temp.id(2),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'qty',100)),0,'5551234567','adres',41.0,29.0)$q$);
+select pg_temp.denied('adet metin (1e9)',$q$insert into public.orders(user_id,business_id,items,total,phone,address,lat,lng) values(pg_temp.id(2),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'qty','1e9')),0,'5551234567','adres',41.0,29.0)$q$);
+select pg_temp.denied('olmayan ürün',$q$insert into public.orders(user_id,business_id,items,total,phone,address,lat,lng) values(pg_temp.id(2),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(98),'qty',1)),0,'5551234567','adres',41.0,29.0)$q$);
+select pg_temp.denied('sepet dizi değil',$q$insert into public.orders(user_id,business_id,items,total,phone,address,lat,lng) values(pg_temp.id(2),pg_temp.id(11),'{"menu_item_id":"x"}'::jsonb,0,'5551234567','adres',41.0,29.0)$q$);
+select pg_temp.denied('boş sepet',$q$insert into public.orders(user_id,business_id,items,total,phone,address,lat,lng) values(pg_temp.id(2),pg_temp.id(11),'[]'::jsonb,0,'5551234567','adres',41.0,29.0)$q$);
+select pg_temp.denied('konum eksik',$q$insert into public.orders(user_id,business_id,items,total,phone,address) values(pg_temp.id(2),pg_temp.id(11),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'qty',1)),0,'5551234567','adres')$q$);
+select pg_temp.denied('işletme kimliği olmayan sipariş',$q$insert into public.orders(user_id,business_id,items,total,phone,address,lat,lng) values(pg_temp.id(2),pg_temp.id(97),jsonb_build_array(jsonb_build_object('menu_item_id',pg_temp.id(21),'qty',1)),0,'5551234567','adres',41.0,29.0)$q$);
+select pg_temp.rows('A rezervasyon durumunu iptal edemez (0 satır)',$q$update public.reservations set status='cancelled' where id=pg_temp.id(51)$q$,0);
+select pg_temp.denied('A siparişi silemez',$q$delete from public.orders where id=pg_temp.id(42)$q$);
+select pg_temp.denied('A rezervasyonu silemez',$q$delete from public.reservations where id=pg_temp.id(51)$q$);
+select pg_temp.denied('randevu hizmetsiz',$q$insert into public.reservations(user_id,business_id,type,date,time,guests,phone) values(pg_temp.id(2),pg_temp.id(11),'appointment',current_date+1,'10:00',1,'5551234567')$q$);
+select pg_temp.denied('rezervasyon geçersiz saat',$q$insert into public.reservations(user_id,business_id,type,date,time,guests,phone) values(pg_temp.id(2),pg_temp.id(11),'reservation',current_date+1,'25:99',1,'5551234567')$q$);
+select pg_temp.denied('rezervasyon 13 kişi',$q$insert into public.reservations(user_id,business_id,type,date,time,guests,phone) values(pg_temp.id(2),pg_temp.id(11),'reservation',current_date+1,'20:00',13,'5551234567')$q$);
+select pg_temp.denied('kısa telefon',$q$insert into public.reservations(user_id,business_id,type,date,time,guests,phone) values(pg_temp.id(2),pg_temp.id(11),'reservation',current_date+1,'20:00',2,'12')$q$);
+select pg_temp.act(pg_temp.id(4));
+select pg_temp.denied('X: sipariş pending -> delivered atlayamaz',$q$update public.orders set status='delivered' where id=pg_temp.id(42)$q$);
+select pg_temp.denied('X: sipariş pending -> on_the_way atlayamaz',$q$update public.orders set status='on_the_way' where id=pg_temp.id(42)$q$);
+select pg_temp.denied('X: teslim edilmiş sipariş geri alınamaz',$q$update public.orders set status='pending' where id=pg_temp.id(41)$q$);
+select pg_temp.denied('X: teslim edilmiş sipariş reddedilemez',$q$update public.orders set status='rejected' where id=pg_temp.id(41)$q$);
+select pg_temp.denied('X: geçersiz durum değeri',$q$update public.orders set status='refunded' where id=pg_temp.id(42)$q$);
+select pg_temp.denied('X: rezervasyon misafir sayısını değiştiremez',$q$update public.reservations set guests=1 where id=pg_temp.id(51)$q$);
+select pg_temp.denied('X: rezervasyon approved -> pending geri alınamaz',$q$update public.reservations set status='pending' where id=pg_temp.id(51)$q$);
+select pg_temp.allowed('X: rezervasyon approved -> completed',$q$update public.reservations set status='completed' where id=pg_temp.id(51)$q$);
+select pg_temp.denied('X: tamamlanmış rezervasyon yeniden açılamaz',$q$update public.reservations set status='approved' where id=pg_temp.id(51)$q$);
+select pg_temp.act(pg_temp.id(5));
+select pg_temp.rows('Y: X rezervasyonunun durumunu değiştiremez',$q$update public.reservations set status='cancelled' where id=pg_temp.id(51)$q$,0);
+select pg_temp.rows('Y: X siparişini reddedemez',$q$update public.orders set status='rejected' where id=pg_temp.id(42)$q$,0);
+select pg_temp.act(pg_temp.id(4));
+select pg_temp.denied('X kendi işletmesini silemez',$q$delete from public.businesses where id=pg_temp.id(11)$q$);
+select pg_temp.act(null,'service_role');
+select pg_temp.denied('service_role bile siparişli işletmeyi silemez (FK RESTRICT)',$q$delete from public.businesses where id=pg_temp.id(11)$q$);
+select pg_temp.su();
+select pg_temp.val('siparişler işletme silme denemesinden sonra duruyor',$q$select count(*)::text from public.orders where business_id=pg_temp.id(11)$q$,'2');
+select pg_temp.act(null,'service_role');
+select pg_temp.probe('müşteri profili silinse bile sipariş kaydı kalır (user_id NULL)',
+ $q$delete from public.user_profiles where id=pg_temp.id(2)$q$,
+ $q$select count(*)::text from public.orders where business_id=pg_temp.id(11) and user_id is null$q$,'2');
+-- Yönetici rolü yalnızca doğrulanmış yetkili e-postaya verilebilir
+select pg_temp.act(null,'service_role');
+select pg_temp.denied('service_role bile başka hesaba admin rolü veremez',$q$update public.user_profiles set role='admin' where id=pg_temp.id(3)$q$);
+select pg_temp.denied('service_role bile işletme sahibini admin yapamaz',$q$update public.user_profiles set role='admin' where id=pg_temp.id(4)$q$);
+select pg_temp.su();
+select pg_temp.denied('doğrudan INSERT ile sahte admin profili',$q$insert into public.user_profiles(id,username,email,role) values(pg_temp.id(90),'x','x@x.test','admin')$q$);
+select pg_temp.probe('yetkili e-posta doğrulanmamışsa admin rolü almaz',
+ $q$insert into auth.users(id,email,raw_user_meta_data,email_confirmed_at) values(pg_temp.id(91),'Caddeden.App@Example.test','{}',null)$q$,
+ $q$select role from public.user_profiles where id=pg_temp.id(91)$q$,'user');
+select pg_temp.val('tek yönetici (ikinci admin satırı tekil indeksle engellenir)',$q$select count(*)::text from public.user_profiles where role='admin'$q$,'1');
+select pg_temp.act(pg_temp.id(1));
+select pg_temp.allowed('doğrulanmış admin kendi rolünü korur',$q$select 1 from public.user_profiles where id=pg_temp.id(1) and role='admin'$q$);
 
 -- 4) Profil gizliliği ve yetki yükseltme ---------------------------------------------------------------------
 select pg_temp.act(pg_temp.id(2));
@@ -323,9 +401,9 @@ select pg_temp.allowed('kişisel veri temizliği',$q$select public.feedback_dele
 select pg_temp.allowed('temizlik tekrar çalışabilir (idempotent)',$q$select public.feedback_delete_account_data(pg_temp.id(2))$q$);
 select pg_temp.su();
 select pg_temp.val('profil kişisel verisi temizlendi',$q$select coalesce(phone,'')||coalesce(first_name,'')||coalesce(school_name,'') from public.user_profiles where id=pg_temp.id(2)$q$,'');
-select pg_temp.val('sipariş kaydı korundu, kişisel alanlar temizlendi',$q$select (count(*)::text)||coalesce(max(phone),'-') from public.orders where user_id=pg_temp.id(2)$q$,'1-');
+select pg_temp.val('sipariş kaydı korundu, kişisel alanlar temizlendi',$q$select (count(*)::text)||coalesce(max(phone),'-') from public.orders where user_id=pg_temp.id(2)$q$,'2-');
 select pg_temp.act(pg_temp.id(2));
-select pg_temp.denied('silme isteği olan hesap işlem yapamaz',$q$insert into public.reservations(user_id,business_id,type,date,time,guests,phone) values(pg_temp.id(2),pg_temp.id(11),'reservation',current_date+1,'20:00',2,'555')$q$);
+select pg_temp.denied('silme isteği olan hesap işlem yapamaz',$q$insert into public.reservations(user_id,business_id,type,date,time,guests,phone) values(pg_temp.id(2),pg_temp.id(11),'reservation',current_date+1,'20:00',2,'5551234567')$q$);
 
 select pg_temp.su();
 do $$ begin

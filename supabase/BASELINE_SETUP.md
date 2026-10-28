@@ -69,6 +69,20 @@ Notlar:
 - **Storage:** `business-media` (herkese açık okuma, 10 MB, jpeg/png/webp; yazma yalnızca ilk klasör adı = sahibi olunan işletme id'si) ve
   `feedback-evidence` (özel, 5 MB). `cafe-profile-photos` kovasını `20261023_cafe_photo_privacy.sql` oluşturur.
 
+## 2b) Güvenlik sertleştirmeleri (baseline'ın kendi başına sağladığı)
+
+| Konu | Önlem |
+|---|---|
+| Sipariş içeriği/toplamı | `base_request_insert_guard` (BEFORE INSERT, SECURITY DEFINER): istemci yalnızca `menu_item_id` + `qty` gönderebilir. Ad, birim fiyat, toplam ve durum menüden sunucuda yeniden yazılır; mükerrer kalemler birleşir; ek alanlar atılır; adet 1–99, en çok 100 kalem, minimum sipariş, açık/onaylı/yayında işletme, işletme sahibi kendi işletmesine sipariş veremez, `user_id` başkası olamaz (reddedilir), saatte en çok 30 kayıt. Uygulama kodu değişmedi (`placeOrder` aynı alanları gönderir; `total` sunucuda yok sayılır). |
+| Rezervasyon | Aynı tetikleyici: tür, tarih (bugün veya sonrası, İstanbul saati), `HH:MM`, 1–12 kişi, randevu için işletmeye ait hizmet. |
+| Durum değişimi | `base_request_update_guard`: yalnızca işletme sahibi, yalnızca `status` sütunu. Sipariş: pending→approved/rejected, rejected→approved, approved→on_the_way/rejected, on_the_way→delivered. Rezervasyon: pending→approved/rejected/cancelled, rejected→approved, approved→rejected/cancelled/completed. Müşteri hiçbir durumu değiştiremez (güncelleme yetkisi yok); geri dönüş ve atlama reddedilir. |
+| İşletme silme | `businesses` için DELETE yetkisi ve politikası kaldırıldı (uygulama işletme silmiyor). `orders.business_id` / `reservations.business_id` **ON DELETE RESTRICT**: siparişli işletme `service_role` ile bile silinemez. İşletmeyi kapatmak için `is_published=false` / `approval_status` kullanın. |
+| Kullanıcı silme | `orders.user_id` / `reservations.user_id` **ON DELETE SET NULL**: profil silinirse işlem kayıtları (tutar, ürünler) korunur; kişisel alanlar zaten hesap silme akışında temizlenir. |
+| Yönetici | `protect_admin_role` (profil INSERT/UPDATE): `role='admin'` yalnızca `auth.users` içinde e-postası **doğrulanmış** `caddeden.app@gmail.com` hesabına verilebilir (service_role dahil herkes için) ve `user_profiles_single_admin` dizini tek admin satırına izin verir. `handle_new_user` doğrulanmamış adrese admin vermez. Edge Function `bootstrap` artık e-posta doğrulamasını ister, kodu sabit zamanlı karşılaştırır ve kullanılan `admin_bootstrap_code` kaydını siler. |
+
+Notlar: `admin_bootstrap_code` tek kullanımlıktır; yeniden gerekirse elle tekrar ekleyin. Yönetici e-postası değişecekse
+`protect_admin_role`, `handle_new_user`, `feedback_admin_allowed`, ilgili migration fonksiyonları ve Edge Function'lar birlikte güncellenmelidir.
+
 ## 3) Supabase Dashboard adımları
 
 1. **Authentication → Providers → Email:** açık; *Confirm email* açık.
@@ -114,8 +128,8 @@ select has_column_privilege('authenticated','public.user_profiles','role','UPDAT
 ```
 
 **Yerelde yapılanlar** (gerçek projede değil): PostgreSQL 16'da baseline + 27 migration sırayla hatasız uygulandı;
-`tests/local/baseline_smoke_LOCAL_ONLY.sql` 144 kontrolün 144'ünü geçti (RLS, sahiplik, rol/durum koruması, fiyat/durum zorlaması, feedback RPC'leri,
-storage politikaları). `readiness_check.sql` dolu yerel veritabanında FAIL=0, boş veritabanında hatasız çalışıp FAIL üretiyor.
+`tests/local/baseline_smoke_LOCAL_ONLY.sql` (baseline + 27 migration) 186 kontrolün 186'sını, `tests/local/baseline_only_LOCAL_ONLY.sql` (yalnızca baseline) 26 kontrolün 26'sını geçti
+(RLS, sahiplik, rol/durum koruması, sunucu tarafı fiyat/durum zorlaması, durum geçişleri, silme/RESTRICT, yönetici koruması, feedback RPC'leri, storage politikaları). `readiness_check.sql` dolu yerel veritabanında FAIL=0, boş veritabanında hatasız çalışıp FAIL üretiyor.
 `tests/local/` dosyasını yalnızca **atılabilir yerel** veritabanında çalıştırın (veri ekler/siler).
 
 Mevcut `tests/*_read_only.sql`: boş veritabanında 6 dosya, mevcut yönetici/işletme verisi bulunmadığı için ("Existing administrator unavailable",
@@ -131,6 +145,7 @@ aradığı için son durumda başarısızdır. Bunlar beklenen ve baseline hatas
 - **Gerçek Supabase davranışı:** `auth`/`storage` yerel iskeletle taklit edildi; GoTrue, Storage API, PostgREST şema önbelleği ve Edge Function çalışması gerçek projede denenmedi.
 - **Yönetici e-postası** SQL ve Edge Function'larda sabit (`caddeden.app@gmail.com`).
 - **Realtime yok** (uygulama polling kullanır). **Stripe entegre değil**; ödemeler yönetici onayında manuel kayıt.
+- **Kalan güvenlik riskleri:** (a) Yönetici güvenliği Supabase Auth'un *Confirm email* ayarına dayanır; kapatılırsa kaydı yapılmamış admin adresini ilk kaydeden doğrulanmış sayılabilir. Açık tutun ve yönetici hesabını hemen oluşturun. (b) `campaigns`, `business_posts` ve `notification_requests` kayıtlarını sahibi silebilir (ödeme kayıtları `payments` tablosunda kalır, silinmez). (c) Müşteri siparişi/rezervasyonu iptal edemez (uygulamada bu akış yok). (d) Sonraki `account_request_guard` (20261020) service_role/SQL-editör dışındaki doğrudan güncellemeleri reddeder; profil silmek gibi toplu işlemleri `service_role` ile yapın. (e) Hız sınırı yalnızca sipariş/rezervasyon için (saatte 30). (f) Edge Function değişikliği (`admin-api` bootstrap) Deno ile derlenip çalıştırılmadı; yalnızca kod incelemesi yapıldı.
 - **Hesap silme:** `cafe-profile-photos` kovasındaki dosyaları temizleme baseline'da yok (yalnızca veritabanı kayıtları anonimleştirilir/silinir).
 - **`ad_packages` tohumlanmadı**; `app_config` yalnızca elle girilen değerleri içerir.
 - Hesaba bağlı derin bağlantı şeması `onspaceapp://` olduğu gibi bırakıldı.

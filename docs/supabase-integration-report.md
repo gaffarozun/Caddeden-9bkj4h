@@ -34,7 +34,7 @@ Eklenenler (hepsi yeni dosya):
 ## Güncelleme: temel şema eklendi
 
 `supabase/migrations/20261001_baseline_inferred_schema.sql` koddan çıkarılan temel şemayı içerir (tablolar, tetikleyiciler, feedback RPC'leri, RLS, bucket'lar).
-Uygulama sırası ve dashboard adımları: `supabase/BASELINE_SETUP.md`. Yerelde baseline + 27 migration hatasız uygulandı (smoke 144/144).
+Uygulama sırası ve dashboard adımları: `supabase/BASELINE_SETUP.md`. Yerelde baseline + 27 migration hatasız uygulandı (smoke 186/186; yalnızca baseline 26/26). Güvenlik sertleştirmeleri: `supabase/BASELINE_SETUP.md` bölüm 2b.
 Hedef Supabase projesinde **hiçbir SQL çalıştırılmadı**. Aşağıdaki 1. madde (temel şema yok) artık "kaynak şema doğrulanamadı" olarak okunmalıdır.
 
 ## Engelleyici / açık maddeler (çalışıyormuş gibi gösterilmedi)

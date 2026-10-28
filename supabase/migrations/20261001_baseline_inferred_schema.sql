@@ -234,8 +234,8 @@ create table if not exists public.payments (
 
 create table if not exists public.orders (
  id uuid primary key default gen_random_uuid(),
- user_id uuid not null references public.user_profiles(id) on delete cascade,
- business_id uuid not null references public.businesses(id) on delete cascade,
+ user_id uuid references public.user_profiles(id) on delete set null,
+ business_id uuid not null references public.businesses(id) on delete restrict,
  note text,
  items jsonb not null default '[]'::jsonb,
  total numeric(12,2) not null default 0 check(total>=0),
@@ -251,8 +251,8 @@ create table if not exists public.orders (
 
 create table if not exists public.reservations (
  id uuid primary key default gen_random_uuid(),
- user_id uuid not null references public.user_profiles(id) on delete cascade,
- business_id uuid not null references public.businesses(id) on delete cascade,
+ user_id uuid references public.user_profiles(id) on delete set null,
+ business_id uuid not null references public.businesses(id) on delete restrict,
  type text not null default 'reservation' check(type in ('reservation','appointment')),
  date date not null,
  time text not null,
@@ -510,6 +510,131 @@ drop trigger if exists protect_post_write on public.business_posts;
 create trigger protect_post_write before insert or update on public.business_posts for each row execute function public.protect_post_write();
 drop trigger if exists protect_notification_request_insert on public.notification_requests;
 create trigger protect_notification_request_insert before insert on public.notification_requests for each row execute function public.protect_notification_request_insert();
+
+-- ---------------------------------------------------------------------------------------------------------
+-- 5b) Sipariş / rezervasyon güvenliği (sunucu tarafı doğrulama)
+-- ---------------------------------------------------------------------------------------------------------
+-- İstemci yalnızca ürün kimliği + adet gönderebilir. Ad, birim fiyat, toplam, durum ve sahip sunucuda yeniden yazılır.
+-- (Sonraki migration'lardaki account_request_guard aynı kuralları ayrıca uygular; bu işlev baseline'ı tek başına güvenli kılar.)
+create or replace function public.base_request_insert_guard()
+returns trigger language plpgsql security definer set search_path=public,pg_temp as $$
+declare
+ jwt_role text:=coalesce(nullif(current_setting('request.jwt.claims',true),'')::json->>'role','');
+ b public.businesses; mi public.menu_items; item jsonb; mid uuid; qty integer;
+ agg jsonb:='{}'::jsonb; k text; computed numeric:=0; canon jsonb:='[]'::jsonb; recent integer;
+begin
+ if not (jwt_role in ('authenticated','anon') or current_user in ('authenticated','anon')) then return new; end if; -- service_role / SQL
+ if auth.uid() is null then raise exception 'Bu işlem için giriş yapmalısınız.' using errcode='42501'; end if;
+ perform public.feedback_actor(true);                      -- etkin, e-postası doğrulanmış, işletme sahibi olmayan müşteri
+ if new.user_id is distinct from auth.uid() then raise exception 'Başkası adına işlem yapılamaz.' using errcode='42501'; end if;
+ new.status:='pending';
+ select * into b from public.businesses where id=new.business_id for share;
+ if b.id is null or b.approval_status<>'approved' or not b.is_published or b.owner_id=auth.uid() then
+  raise exception 'İşletme işlem için uygun değil.' using errcode='42501'; end if;
+ new.phone:=btrim(coalesce(new.phone,''));
+ if char_length(new.phone) not between 7 and 20 then raise exception 'Geçerli bir telefon numarası gerekli.' using errcode='22023'; end if;
+ new.customer_name:=nullif(left(btrim(coalesce(new.customer_name,'')),120),'');
+ if tg_table_name='orders' then
+  select count(*) into recent from public.orders where user_id=auth.uid() and created_at>now()-interval '1 hour';
+  if recent>=30 then raise exception 'Çok sık sipariş verdiniz. Biraz sonra tekrar deneyin.' using errcode='54000'; end if;
+  if not coalesce(b.allow_order,false) or not coalesce(b.allow_menu,false) then raise exception 'İşletme sipariş almıyor.' using errcode='42501'; end if;
+  new.address:=btrim(coalesce(new.address,''));
+  if new.address='' or char_length(new.address)>500 or new.lat is null or new.lng is null
+     or new.lat not between -90 and 90 or new.lng not between -180 and 180 then
+   raise exception 'Teslimat adresi ve konumu gerekli.' using errcode='22023'; end if;
+  new.note:=nullif(left(btrim(coalesce(new.note,'')),500),'');
+  if jsonb_typeof(new.items)<>'array' or jsonb_array_length(new.items) not between 1 and 100 then
+   raise exception 'Geçerli sepet gerekli.' using errcode='22023'; end if;
+  for item in select value from jsonb_array_elements(new.items) loop
+   if jsonb_typeof(item)<>'object' or coalesce(item->>'menu_item_id','') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      or coalesce(item->>'qty','') !~ '^[0-9]{1,2}$' then
+    raise exception 'Geçersiz sepet öğesi.' using errcode='22023'; end if;
+   mid:=(item->>'menu_item_id')::uuid; qty:=(item->>'qty')::integer;
+   if qty not between 1 and 99 then raise exception 'Geçersiz ürün adedi.' using errcode='22023'; end if;
+   agg:=jsonb_set(agg,array[mid::text],to_jsonb(coalesce((agg->>mid::text)::integer,0)+qty));
+  end loop;
+  for k in select key from jsonb_each(agg) loop
+   qty:=(agg->>k)::integer;
+   if qty>99 then raise exception 'Geçersiz ürün adedi.' using errcode='22023'; end if;
+   select * into mi from public.menu_items where id=k::uuid and business_id=b.id and item_type='product';
+   if mi.id is null then raise exception 'Menü değişmiş. Menüyü yenileyin.' using errcode='22023'; end if;
+   canon:=canon||jsonb_build_array(jsonb_build_object('menu_item_id',mi.id,'name',mi.name,'price',mi.price,'qty',qty));
+   computed:=computed+mi.price*qty;
+  end loop;
+  if computed<greatest(0,coalesce(b.min_order,0)) then raise exception 'Minimum sipariş tutarına ulaşılmadı.' using errcode='22023'; end if;
+  new.items:=canon; new.total:=computed;
+ else
+  select count(*) into recent from public.reservations where user_id=auth.uid() and created_at>now()-interval '1 hour';
+  if recent>=30 then raise exception 'Çok sık talep oluşturdunuz. Biraz sonra tekrar deneyin.' using errcode='54000'; end if;
+  if not coalesce(b.allow_reservation,false) then raise exception 'İşletme rezervasyon/randevu almıyor.' using errcode='42501'; end if;
+  if new.type not in ('reservation','appointment') or new.date is null or new.date<(now() at time zone 'Europe/Istanbul')::date
+     or coalesce(new.time,'') !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' or new.guests not between 1 and 12 then
+   raise exception 'Geçersiz rezervasyon bilgisi.' using errcode='22023'; end if;
+  if new.type='appointment' then
+   if not exists(select 1 from public.menu_items where id=new.service_id and business_id=b.id and item_type='service') then
+    raise exception 'İşletmeye ait bir hizmet seçin.' using errcode='22023'; end if;
+  elsif new.service_id is not null then
+   raise exception 'Rezervasyon hizmet kimliği içeremez.' using errcode='22023';
+  end if;
+ end if;
+ return new;
+end; $$;
+revoke all on function public.base_request_insert_guard() from public,anon,authenticated;
+
+-- Durum güncellemesi: yalnızca işletme sahibi (RLS), yalnızca `status` sütunu ve yalnızca izinli geçişler. Müşteri hiçbir durumu değiştiremez.
+create or replace function public.base_request_update_guard()
+returns trigger language plpgsql security definer set search_path=public,pg_temp as $$
+declare
+ jwt_role text:=coalesce(nullif(current_setting('request.jwt.claims',true),'')::json->>'role','');
+ ok boolean;
+begin
+ if not (jwt_role in ('authenticated','anon') or current_user in ('authenticated','anon')) then return new; end if;
+ if not exists(select 1 from public.businesses b where b.id=old.business_id and b.owner_id=auth.uid()) then
+  raise exception 'Yalnızca kendi işletmenizin taleplerini yönetebilirsiniz.' using errcode='42501'; end if;
+ if (to_jsonb(new)-array['status','updated_at']) is distinct from (to_jsonb(old)-array['status','updated_at']) then
+  raise exception 'Yalnızca talep durumu değiştirilebilir.' using errcode='42501'; end if;
+ if new.status is not distinct from old.status then return new; end if;
+ if tg_table_name='orders' then
+  ok:=(old.status='pending' and new.status in ('approved','rejected'))
+   or (old.status='rejected' and new.status='approved')
+   or (old.status='approved' and new.status in ('on_the_way','rejected'))
+   or (old.status='on_the_way' and new.status='delivered');
+ else
+  ok:=(old.status='pending' and new.status in ('approved','rejected','cancelled'))
+   or (old.status='rejected' and new.status='approved')
+   or (old.status='approved' and new.status in ('rejected','cancelled','completed'));
+ end if;
+ if not ok then raise exception 'Bu durum geçişine izin verilmiyor (% -> %).',old.status,new.status using errcode='22023'; end if;
+ return new;
+end; $$;
+revoke all on function public.base_request_update_guard() from public,anon,authenticated;
+
+drop trigger if exists base_request_insert_guard on public.orders;
+create trigger base_request_insert_guard before insert on public.orders for each row execute function public.base_request_insert_guard();
+drop trigger if exists base_request_update_guard on public.orders;
+create trigger base_request_update_guard before update on public.orders for each row execute function public.base_request_update_guard();
+drop trigger if exists base_request_insert_guard on public.reservations;
+create trigger base_request_insert_guard before insert on public.reservations for each row execute function public.base_request_insert_guard();
+drop trigger if exists base_request_update_guard on public.reservations;
+create trigger base_request_update_guard before update on public.reservations for each row execute function public.base_request_update_guard();
+
+-- Yönetici rolü: yalnızca e-postası DOĞRULANMIŞ yetkili adrese ve tek hesaba verilebilir. service_role dahil herkes için geçerlidir.
+create or replace function public.protect_admin_role()
+returns trigger language plpgsql security definer set search_path=public,pg_temp as $$
+begin
+ if new.role='admin' and (tg_op='INSERT' or old.role is distinct from 'admin') then
+  if not exists(select 1 from auth.users u where u.id=new.id and lower(trim(u.email))='caddeden.app@gmail.com'
+                and u.email_confirmed_at is not null and u.deleted_at is null) then
+   raise exception 'Yönetici rolü yalnızca doğrulanmış yetkili e-posta hesabına verilebilir.' using errcode='42501'; end if;
+  if exists(select 1 from public.user_profiles x where x.role='admin' and x.id<>new.id) then
+   raise exception 'Yönetici hesabı zaten atanmış.' using errcode='42501'; end if;
+ end if;
+ return new;
+end; $$;
+revoke all on function public.protect_admin_role() from public,anon,authenticated;
+drop trigger if exists protect_admin_role on public.user_profiles;
+create trigger protect_admin_role before insert or update of role on public.user_profiles for each row execute function public.protect_admin_role();
+create unique index if not exists user_profiles_single_admin on public.user_profiles((role)) where role='admin';
 
 drop trigger if exists orders_updated_at on public.orders;
 create trigger orders_updated_at before update on public.orders for each row execute function public.set_updated_at();
@@ -856,7 +981,7 @@ create policy base_profiles_update_own on public.user_profiles for update to aut
 
 -- businesses
 grant select on public.businesses to anon;
-grant select,insert,update,delete on public.businesses to authenticated;
+grant select,insert,update on public.businesses to authenticated;  -- DELETE yok: işletme kaydı istemciden silinemez (siparişler kaybolmasın)
 drop policy if exists base_businesses_public_select on public.businesses;
 create policy base_businesses_public_select on public.businesses for select to anon,authenticated using (approval_status='approved' and is_published);
 drop policy if exists base_businesses_owner_select on public.businesses;
@@ -865,8 +990,7 @@ drop policy if exists base_businesses_owner_insert on public.businesses;
 create policy base_businesses_owner_insert on public.businesses for insert to authenticated with check (owner_id=auth.uid());
 drop policy if exists base_businesses_owner_update on public.businesses;
 create policy base_businesses_owner_update on public.businesses for update to authenticated using (owner_id=auth.uid()) with check (owner_id=auth.uid());
-drop policy if exists base_businesses_owner_delete on public.businesses;
-create policy base_businesses_owner_delete on public.businesses for delete to authenticated using (owner_id=auth.uid());
+drop policy if exists base_businesses_owner_delete on public.businesses;  -- kaldırıldı (eski sürümlerde vardı)
 
 -- menu_items
 grant select on public.menu_items to anon;

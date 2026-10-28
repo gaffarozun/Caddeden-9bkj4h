@@ -46,13 +46,25 @@ Deno.serve(async (req) => {
       if (String(caller.email ?? '').trim().toLowerCase() !== AUTHORIZED_ADMIN_EMAIL) {
         return json({ error: 'Bu hesap yönetici olarak yetkilendirilmemiş.' }, 403);
       }
+      // Admin rights require a VERIFIED mailbox, never just a matching address string.
+      if (!(caller.email_confirmed_at ?? (caller as { confirmed_at?: string }).confirmed_at)) {
+        return json({ error: 'Önce e-posta adresini doğrula, sonra tekrar dene.' }, 403);
+      }
       const code = String(body.code ?? '').trim();
       const { data: cfg } = await admin
         .from('app_config')
         .select('value')
         .eq('key', 'admin_bootstrap_code')
         .single();
-      if (!cfg?.value || code !== cfg.value) {
+      // Constant-time comparison so the code cannot be guessed through response timing.
+      const safeEqual = (a: string, b: string) => {
+        const x = new TextEncoder().encode(a);
+        const y = new TextEncoder().encode(b);
+        let diff = x.length ^ y.length;
+        for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+        return diff === 0;
+      };
+      if (!cfg?.value || !safeEqual(code, String(cfg.value))) {
         return json({ error: 'Geçersiz kurulum kodu.' }, 403);
       }
       const { count: adminCount } = await admin
@@ -72,6 +84,8 @@ Deno.serve(async (req) => {
         .update({ role: 'admin' })
         .eq('id', caller.id);
       if (upErr) return json({ error: upErr.message }, 400);
+      // One-time code: consume it so it cannot be replayed.
+      await admin.from('app_config').delete().eq('key', 'admin_bootstrap_code');
       await log('bootstrap_admin', { email: caller.email });
       return json({ ok: true, role: 'admin' });
     }

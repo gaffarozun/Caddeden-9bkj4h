@@ -32,7 +32,7 @@ expected_functions(name) as (values
   ('feedback_read'),('feedback_write'),('feedback_admin_read'),('feedback_ratings'),('feedback_actor'),('feedback_admin_allowed'),
   ('feedback_begin_account_deletion'),('feedback_delete_account_data'),('feedback_throttle'),
   ('protect_business_cols'),('protect_ad_insert'),('protect_post_write'),('protect_notification_request_insert'),
-  ('admin_alert_on_insert'),('set_updated_at'),
+  ('admin_alert_on_insert'),('set_updated_at'),('base_request_insert_guard'),('base_request_update_guard'),('protect_admin_role'),
   ('cafe_my_visit'),('cafe_room_state'),('cafe_set_room'),('cafe_set_visibility'),('cafe_leave'),('cafe_refresh_location'),
   ('cafe_nearby'),('cafe_join'),('cafe_save_photo'),('cafe_save_seating_payload'),('cafe_social_state'),('cafe_set_instagram'),
   ('cafe_request_instagram'),('cafe_decide_instagram'),('cafe_revoke_instagram'),('cafe_instagram_link')
@@ -121,7 +121,10 @@ select * from (
                            where t.tgrelid = to_regclass('public.' || x.tbl) and not t.tgisinternal and p.proname = x.fn) then 'OK' else 'FAIL' end,
          'yoksa istemci fiyat/durum/onay alanlarını kendisi yazabilir'
   from (values ('user_profiles','protect_user_profile_cols'),('businesses','protect_business_cols'),('ads','protect_ad_insert'),
-               ('business_posts','protect_post_write'),('notification_requests','protect_notification_request_insert')) x(tbl, fn)
+               ('business_posts','protect_post_write'),('notification_requests','protect_notification_request_insert'),
+               ('orders','base_request_insert_guard'),('orders','base_request_update_guard'),
+               ('reservations','base_request_insert_guard'),('reservations','base_request_update_guard'),
+               ('user_profiles','protect_admin_role')) x(tbl, fn)
   where to_regclass('public.' || x.tbl) is not null
 
   union all
@@ -147,6 +150,34 @@ select * from (
                            and coalesce(p.qual,'') ilike '%owner_id%') then 'OK' else 'WARN' end,
          'işletme yalnızca kendi satırını güncellemeli (owner_id = auth.uid())'
   where to_regclass('public.businesses') is not null
+
+  union all
+  select 10, 'işletme silinemez: authenticated DELETE yetkisi (businesses)',
+         case when has_table_privilege('authenticated', 'public.businesses', 'DELETE') then 'FAIL' else 'OK' end,
+         'işletme sahibi işletmeyi (ve siparişlerini) silememeli'
+  where to_regclass('public.businesses') is not null
+
+  union all
+  select 10, 'işlem kaydı korunur: ' || x.tbl || '.business_id ON DELETE RESTRICT',
+         case when exists (select 1 from pg_constraint c
+                           where c.conrelid = to_regclass('public.' || x.tbl) and c.contype = 'f'
+                             and c.confrelid = to_regclass('public.businesses') and c.confdeltype = 'r') then 'OK' else 'FAIL' end,
+         'CASCADE olursa işletme silinince siparişler/rezervasyonlar da silinir'
+  from (values ('orders'),('reservations')) x(tbl)
+  where to_regclass('public.' || x.tbl) is not null and to_regclass('public.businesses') is not null
+
+  union all
+  select 10, 'tek yönetici dizini (user_profiles_single_admin)',
+         case when exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'user_profiles_single_admin') then 'OK' else 'FAIL' end,
+         'birden fazla admin satırı engellenir'
+  where to_regclass('public.user_profiles') is not null
+
+  union all
+  select 10, 'müşteri doğrudan INSERT/UPDATE: orders toplam/ürün sütunu yetkisi',
+         case when has_column_privilege('authenticated', 'public.orders', 'total', 'UPDATE')
+                or has_column_privilege('authenticated', 'public.orders', 'items', 'UPDATE') then 'FAIL' else 'OK' end,
+         'toplam ve ürünler yalnızca INSERT sırasında sunucu tetikleyicisiyle belirlenir'
+  where to_regclass('public.orders') is not null
 
   union all
   select 11, 'yönetici hesabı',
