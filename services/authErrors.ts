@@ -19,7 +19,7 @@ export function describeAuthError(error: unknown, context: string): string {
   if (code === 'over_email_send_rate_limit' || msg.includes('email rate limit') || msg.includes('rate limit') || e.status === 429) return 'Kısa sürede çok fazla e-posta istendi. Birkaç dakika bekleyip tekrar deneyin.';
   if (code === 'weak_password' || msg.includes('password should')) return 'Şifre çok zayıf. Daha uzun ve tahmin edilmesi zor bir şifre seçin.';
   if (code === 'user_already_exists' || msg.includes('already registered')) return 'Bu e-posta ile zaten bir hesap var. Giriş yapmayı deneyin.';
-  if (msg.includes('error sending') || code === 'unexpected_failure' && msg.includes('email')) return 'Doğrulama e-postası gönderilemedi. E-posta (SMTP) ayarları yapılandırılmamış olabilir; yöneticiye bildirin.';
+  if (msg.includes('error sending') || msg.includes('sending') && msg.includes('email') || code === 'unexpected_failure' && (e.status === 500 || msg.includes('email'))) return `Doğrulama e-postası gönderilemedi. Sunucunun e-posta (SMTP) ayarı hatalı ya da gönderici alan adı doğrulanmamış olabilir; sorun uygulamada değil. Yöneticiye bildirin. (Hata kodu: ${e.status ?? '?'} ${e.code ?? 'bilinmiyor'})`;
   if (msg.includes('database error saving new user')) return 'Hesap oluşturulamadı (profil kaydı hatası). Veritabanı kurulumunun tamamlandığından emin olun.';
   if (e.status === 401 || msg.includes('invalid api key') || msg.includes('no api key')) return 'Yetkilendirme hatası: Supabase anon anahtarı (EXPO_PUBLIC_SUPABASE_ANON_KEY) geçersiz ya da başka bir projeye ait.';
   if (isNetworkError(error)) return 'Sunucuya istek gönderilemedi (ağ hatası).';

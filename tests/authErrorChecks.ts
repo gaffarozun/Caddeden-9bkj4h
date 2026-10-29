@@ -11,6 +11,8 @@ export function runAuthErrorChecks() {
   assert(describeAuthError({ message: 'x', code: 'over_email_send_rate_limit', status: 429 }, 't').includes('e-posta'), 'Rate limit is explained.');
   assert(describeAuthError({ message: 'Error sending confirmation email', status: 500 }, 't').includes('SMTP'), 'SMTP failure is explained.');
   assert(describeAuthError({ message: 'Invalid API key', status: 401 }, 't').includes('anon'), 'Bad anon key is explained.');
+  assert(describeAuthError({ message: 'Error sending magic link email', code: 'unexpected_failure', status: 500 }, 't').includes('500 unexpected_failure'), 'Magic link send failure shows SMTP guidance and an error code.');
+  assert(describeAuthError({ message: '', code: 'unexpected_failure', status: 500 }, 't').includes('SMTP'), 'Bare 500 unexpected_failure is treated as an e-mail delivery problem.');
   assert(!describeAuthError({ message: 'Error sending magic link email' }, 't').includes('internet'), 'Email failure is never reported as an internet problem.');
   assert(describeAuthError({ message: 'Email address not authorized', code: 'email_address_not_authorized', status: 400 }, 't').includes('SMTP'), 'Built-in SMTP restriction is explained.');
   assert(messageForDiagnosis('host_unreachable').includes('EXPO_PUBLIC_SUPABASE_URL'), 'Unreachable host points at the URL setting.');
