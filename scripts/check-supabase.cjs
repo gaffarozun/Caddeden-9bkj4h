@@ -19,21 +19,29 @@ const note = (lvl, t, m) => console.log(`::${lvl} title=supabase ${t}::${m}`);
   }
 })();
 
-// Baseline migration'daki tabloların hedef projede var olup olmadığını salt-okunur GET ile sınar.
-// 200/401/403 = tablo var (izin durumu önemsiz), 404 = yok. Yalnızca tablo adları yazılır.
+// Tüm migration dosyalarındaki tabloların ve argümansız RPC fonksiyonlarının hedef projede var olup olmadığını
+// salt-okunur isteklerle sınar (tablo: GET limit=0; fonksiyon: HEAD → PostgREST GET; volatile fonksiyon çalıştırılmaz, 405 döner).
+// 404 = yok. Yalnızca nesne ve dosya adları yazılır.
 (async () => {
   if (!url || !key) return;
-  const fs = require('fs');
-  let sql = ''; try { sql = fs.readFileSync('supabase/migrations/20261001_baseline_inferred_schema.sql', 'utf8'); } catch { return; }
-  const tables = [...new Set([...sql.matchAll(/create table (?:if not exists )?public\.(\w+)/gi)].map((m) => m[1]))];
-  const missing = [];
-  for (const t of tables) {
-    try { const r = await fetch(`${url}/rest/v1/${t}?select=*&limit=0`, { headers: { apikey: key } }); if (r.status === 404) missing.push(t); } catch { return; }
+  const fs = require('fs'), path = require('path');
+  const dir = 'supabase/migrations';
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+  const tables = new Map(), fns = new Map();
+  for (const f of files) {
+    const sql = fs.readFileSync(path.join(dir, f), 'utf8');
+    for (const m of sql.matchAll(/create table (?:if not exists )?public\.(\w+)/gi)) if (!tables.has(m[1])) tables.set(m[1], f);
+    for (const m of sql.matchAll(/create (?:or replace )?function public\.(\w+)\(\s*\)\s*returns/gi)) if (!fns.has(m[1])) fns.set(m[1], f);
   }
-  if (missing.length) note('warning', 'eksik tablolar', `${missing.length}/${tables.length}: ${missing.join(', ')}`);
-  else note('notice', 'tablolar', `baseline'daki ${tables.length} tablonun hepsi mevcut`);
-  for (const f of ['public_paid_campaigns', 'university_public_messages', 'experiences_enabled']) {
-    // Yalnızca varlık sınaması: GET bir RPC'yi çalıştırmaz (PostgREST yalnızca POST/STABLE GET ile çağırır); 404 = yok.
-    try { const r = await fetch(`${url}/rest/v1/rpc/${f}`, { method: 'HEAD', headers: { apikey: key } }); note(r.status === 404 ? 'warning' : 'notice', 'rpc ' + f, r.status === 404 ? 'YOK' : 'var'); } catch {}
+  const missT = [], missF = [];
+  for (const [t, f] of tables) {
+    try { const r = await fetch(`${url}/rest/v1/${t}?select=*&limit=0`, { headers: { apikey: key } }); if (r.status === 404) missT.push(`${t} (${f})`); } catch { return; }
   }
+  for (const [n, f] of fns) {
+    try { const r = await fetch(`${url}/rest/v1/rpc/${n}`, { method: 'HEAD', headers: { apikey: key } }); if (r.status === 404) missF.push(`${n} (${f})`); } catch { return; }
+  }
+  note(missT.length ? 'warning' : 'notice', 'tablolar', `${tables.size - missT.length}/${tables.size} var` + (missT.length ? ` | EKSİK: ${missT.join(', ')}` : ''));
+  note(missF.length ? 'warning' : 'notice', 'rpc fonksiyonlari', `${fns.size - missF.length}/${fns.size} var` + (missF.length ? ` | EKSİK: ${missF.join(', ')}` : ''));
+  const mig = [...new Set([...missT, ...missF].map((x) => x.match(/\((.+)\)$/)[1]))];
+  if (mig.length) note('warning', 'uygulanmamis migration dosyalari', mig.join(' → '));
 })();
